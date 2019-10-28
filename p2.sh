@@ -38,8 +38,8 @@ if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
   echo '    - http://172.16.0.12:2379' >> kubeadm-init.yaml
   echo networking: >> kubeadm-init.yaml
   echo '  podSubnet: 192.168.0.0/16' >> kubeadm-init.yaml
-#  echo '  serviceSubnet: "10.96.0.0/12"' >> kubeadm-init.yaml
-#  echo '  dnsDomain: "cluster.local"' >> kubeadm-init.yaml
+  echo '  serviceSubnet: "10.96.0.0/12"' >> kubeadm-init.yaml
+  echo '  dnsDomain: "cluster.local"' >> kubeadm-init.yaml
 fi
 
 # Starting Kubeadm
