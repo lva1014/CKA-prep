@@ -58,5 +58,3 @@ if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
   # enter password
 fi
 #end of part 2
-
-# 
