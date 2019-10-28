@@ -9,6 +9,10 @@ if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]] || [[ $TEMP_LOCAL_HOSTNAME == 'maste
   etcdctl endpoint health
 fi
 
+# Enable networking module
+modprobe ip_vs
+echo ip_vs > /etc/modules-load.d/ip_vs.conf
+
 # Creating initial config for Kubadm on master01
 if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
   cd /root
@@ -34,8 +38,8 @@ if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
   echo '    - http://172.16.0.12:2379' >> kubeadm-init.yaml
   echo networking: >> kubeadm-init.yaml
   echo '  podSubnet: 192.168.0.0/16' >> kubeadm-init.yaml
-  echo '  serviceSubnet: "10.96.0.0/12"' >> kubeadm-init.yaml
-  echo '  dnsDomain: "cluster.local"' >> kubeadm-init.yaml
+#  echo '  serviceSubnet: "10.96.0.0/12"' >> kubeadm-init.yaml
+#  echo '  dnsDomain: "cluster.local"' >> kubeadm-init.yaml
 fi
 
 # Starting Kubeadm
@@ -48,7 +52,8 @@ fi
 # Installing networking: Calico on master01
 if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
   export KUBECONFIG=/etc/kubernetes/admin.conf
-  kubectl apply -f https://docs.projectcalico.org/v3.8/manifests/calico.yaml
+  #kubectl apply -f https://docs.projectcalico.org/v3.8/manifests/calico.yaml
+  kubectl apply -f https://docs.projectcalico.org/v3.10/manifests/calico.yaml
 fi
 
 # watch -n1 kubectl get pods -A
