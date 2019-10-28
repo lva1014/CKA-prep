@@ -52,7 +52,8 @@ fi
 # Installing networking: Calico on master01
 if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
   export KUBECONFIG=/etc/kubernetes/admin.conf
-  kubectl apply -f https://docs.projectcalico.org/v3.8/manifests/calico.yaml
+  kubectl apply -f /root/CKA-prep/calico.yaml
+  #kubectl apply -f https://docs.projectcalico.org/v3.8/manifests/calico.yaml
   #kubectl apply -f https://docs.projectcalico.org/v3.10/manifests/calico.yaml
 fi
 
