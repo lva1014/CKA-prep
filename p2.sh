@@ -46,20 +46,20 @@ fi
 if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
   systemctl start docker.service
   kubeadm config images pull
-  kubeadm init  --config=/root/kubeadm-init.yaml --pod-network-cidr=192.168.0.0/16 --ignore-preflight-errors=all
+  kubeadm init  --config=/root/kubeadm-init.yaml --ignore-preflight-errors=all
 fi
 
 # Installing networking: Calico on master01
-#if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
-#  export KUBECONFIG=/etc/kubernetes/admin.conf
-#  #kubectl apply -f https://docs.projectcalico.org/v3.8/manifests/calico.yaml
-#  kubectl apply -f https://docs.projectcalico.org/v3.10/manifests/calico.yaml
-#fi
+if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
+  export KUBECONFIG=/etc/kubernetes/admin.conf
+  #kubectl apply -f https://docs.projectcalico.org/v3.8/manifests/calico.yaml
+  kubectl apply -f https://docs.projectcalico.org/v3.10/manifests/calico.yaml
+fi
 
 # watch -n1 kubectl get pods -A
-#if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
-#  export master2=172.16.0.12
-#  scp -r /etc/kubernetes/pki $master2:/etc/kubernetes/
-#  # enter password
-#fi
+if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
+  export master2=172.16.0.12
+  scp -r /etc/kubernetes/pki $master2:/etc/kubernetes/
+  # enter password
+fi
 #end of part 2
