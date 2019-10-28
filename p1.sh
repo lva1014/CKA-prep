@@ -146,6 +146,9 @@ systemctl enable etcd
 # Preparion for Kubeadm
 echo 1 > /proc/sys/net/bridge/bridge-nf-call-iptables
 
+echo
+echo Bye, bye..
+
 # System reboot
 reboot
 # end of part 1
