@@ -46,7 +46,7 @@ fi
 if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
   systemctl start docker.service
   kubeadm config images pull
-  kubeadm init  --config=/root/kubeadm-init.yaml --ignore-preflight-errors=all
+  kubeadm init  --config=/root/kubeadm-init.yaml --pod-network-cidr=192.168.0.0/16 --ignore-preflight-errors=all
 fi
 
 # Installing networking: Calico on master01
