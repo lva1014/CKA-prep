@@ -50,17 +50,17 @@ if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
 fi
 
 # Installing networking: Calico on master01
-if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
-  export KUBECONFIG=/etc/kubernetes/admin.conf
-  kubectl apply -f /root/CKA-prep/calico.yaml
-  #kubectl apply -f https://docs.projectcalico.org/v3.8/manifests/calico.yaml
-  #kubectl apply -f https://docs.projectcalico.org/v3.10/manifests/calico.yaml
-fi
+#if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
+#  export KUBECONFIG=/etc/kubernetes/admin.conf
+#  kubectl apply -f /root/CKA-prep/calico.yaml
+#  #kubectl apply -f https://docs.projectcalico.org/v3.8/manifests/calico.yaml
+#  #kubectl apply -f https://docs.projectcalico.org/v3.10/manifests/calico.yaml
+#fi
 
 # watch -n1 kubectl get pods -A
-if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
-  export master2=172.16.0.12
-  scp -r /etc/kubernetes/pki $master2:/etc/kubernetes/
-  # enter password
-fi
+#if [[ $TEMP_LOCAL_HOSTNAME == 'master01' ]]; then
+#  export master2=172.16.0.12
+#  scp -r /etc/kubernetes/pki $master2:/etc/kubernetes/
+#  # enter password
+#fi
 #end of part 2
