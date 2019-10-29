@@ -4,3 +4,4 @@ https://github.com/etcd-io/etcd/blob/master/Documentation/op-guide/clustering.md
 https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/install-kubeadm/#
 https://github.com/rjeka/kubernetes-ceph-percona/blob/master/create-config.sh
 https://kubernetes.io/docs/setup/production-environment/container-runtimes/
+https://github.com/kelseyhightower/kubernetes-the-hard-way
