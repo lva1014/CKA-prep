@@ -421,15 +421,15 @@ kubectl config use-context default --kubeconfig=admin.kubeconfig
 
 # Copy the appropriate kubelet and kube-proxy kubeconfig files to each worker instance
 for instance in worker01 worker02 worker03; do
-  sshpass -f "/root/password" scp -r {$instance}.kubeconfig root@{$instance}:~/
-  sshpass -f "/root/password" scp -r kube-proxy.kubeconfig root@{$instance}:~/
+  sshpass -f "/root/password" scp -r $instance.kubeconfig root@$instance:~/
+  sshpass -f "/root/password" scp -r kube-proxy.kubeconfig root@$instance:~/
 done
 
 # Copy the appropriate kube-controller-manager and kube-scheduler kubeconfig files to each controller instance
 for instance in master02 master03; do
-  sshpass -f "/root/password" scp -r admin.kubeconfig root@{$instance}:~/
-  sshpass -f "/root/password" scp -r kube-controller-manager.kubeconfig root@{$instance}:~/
-  sshpass -f "/root/password" scp -r kube-scheduler.kubeconfig root@{$instance}:~/
+  sshpass -f "/root/password" scp -r admin.kubeconfig root@$instance:~/
+  sshpass -f "/root/password" scp -r kube-controller-manager.kubeconfig root@$instance:~/
+  sshpass -f "/root/password" scp -r kube-scheduler.kubeconfig root@$instance:~/
 done
 
 # Generate encryption key
@@ -451,7 +451,7 @@ EOF
 
 # Copy the encryption-config.yaml encryption config file to each controller instance
 for instance in master02 master03; do
-  sshpass -f "/root/password" scp -r encryption-config.yaml root@{$instance}:~/
+  sshpass -f "/root/password" scp -r encryption-config.yaml root@$instance:~/
 done
 
 # Download the official etcd release binaries from the etcd GitHub project
