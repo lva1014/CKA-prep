@@ -6,8 +6,10 @@
 # cni v0.7.1
 # etcd v3.4.0
 
-# change hostname
 TEMP_LOCAL_IP=$(ip add | grep 172.16 | awk '{print($2)}' | rev | cut -c4- | rev)
+KUBERNETES_PUBLIC_ADDRESS="10.0.0.230" 
+
+# change hostname
 if [[ $TEMP_LOCAL_IP == '172.16.0.11' ]]; then
   hostnamectl set-hostname master01
   TEMP_LOCAL_HOSTNAME='master01'
@@ -17,15 +19,6 @@ elif [[ $TEMP_LOCAL_IP == '172.16.0.12' ]]; then
 elif [[ $TEMP_LOCAL_IP == '172.16.0.13' ]]; then
   hostnamectl set-hostname master03
   TEMP_LOCAL_HOSTNAME='master03'  
-elif [[ $TEMP_LOCAL_IP == '172.16.0.21' ]]; then
-  hostnamectl set-hostname worker01
-  TEMP_LOCAL_HOSTNAME='worker01'
-elif [[ $TEMP_LOCAL_IP == '172.16.0.22' ]]; then
-  hostnamectl set-hostname worker02
-  TEMP_LOCAL_HOSTNAME='worker02'
-elif [[ $TEMP_LOCAL_IP == '172.16.0.23' ]]; then
-  hostnamectl set-hostname worker03
-  TEMP_LOCAL_HOSTNAME='worker03'
 fi
 
 # Add DNS records
@@ -34,6 +27,17 @@ echo 172.16.0.12  master02 >> /etc/hosts
 echo 172.16.0.21  worker01 >> /etc/hosts
 echo 172.16.0.22  worker02 >> /etc/hosts
 echo 172.16.0.23  worker03 >> /etc/hosts
+
+echo master02 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDawPicuxImfnUm3P+1zVAjXtW00yn0b5M6EE/JS4pzr16Rmimg/CDXDc59UL/bKEc6446PY04DmUrz
+dcw/8VWw= > /root/.ssh/know_hosts
+echo master03 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDawPicuxImfnUm3P+1zVAjXtW00yn0b5M6EE/JS4pzr16Rmimg/CDXDc59UL/bKEc6446PY04DmUrz
+dcw/8VWw= > /root/.ssh/know_hosts
+echo worker01 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDawPicuxImfnUm3P+1zVAjXtW00yn0b5M6EE/JS4pzr16Rmimg/CDXDc59UL/bKEc6446PY04DmUrz
+dcw/8VWw= > /root/.ssh/know_hosts
+echo worker02 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDawPicuxImfnUm3P+1zVAjXtW00yn0b5M6EE/JS4pzr16Rmimg/CDXDc59UL/bKEc6446PY04DmUrz
+dcw/8VWw= > /root/.ssh/know_hosts
+echo worker03 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDawPicuxImfnUm3P+1zVAjXtW00yn0b5M6EE/JS4pzr16Rmimg/CDXDc59UL/bKEc6446PY04DmUrz
+dcw/8VWw= > /root/.ssh/know_hosts
 
 # update packages
 yum update -y
@@ -125,7 +129,6 @@ cfssl gencert \
   -config=ca-config.json \
   -profile=kubernetes \
   admin-csr.json | cfssljson -bare admin
-  
   
 for instance in worker01 worker02 worker03; do
 cat > ${instance}-csr.json <<EOF
@@ -306,12 +309,20 @@ cfssl gencert \
   service-account-csr.json | cfssljson -bare service-account
   
 # copy keys to respective nodes
-# add CLIs for :
-#   ca.pem, worker${id}-key.pem worker${id}.pem worker${id}:~/
-#   ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem service-account-key.pem service-account.pem master${id}:~/ 
+for instance in worker01 worker02 worker03; do
+  sshpass -f "/root/password" scp -r ca.pem root@{$instance}:~/
+  sshpass -f "/root/password" scp -r {$instance}-key.pem root@{$instance}:~/
+  sshpass -f "/root/password" scp -r {$instance}.pem root@{$instance}:~/
+done
+for instance in master02 master03; do
+  sshpass -f "/root/password" scp -r ca.pem root@{$instance}:~/
+  sshpass -f "/root/password" scp -r ca-key.pem root@{$instance}:~/
+  sshpass -f "/root/password" scp -r kubernetes-key.pem root@{$instance}:~/
+  sshpass -f "/root/password" scp -r service-account-key.pem root@{$instance}:~/
+  sshpass -f "/root/password" scp -r service-account.pem root@{$instance}:~/
+done
   
 # Generate a kubeconfig file for each worker node
-KUBERNETES_PUBLIC_ADDRESS="10.0.0.230" 
 for instance in worker01 worker02 worker03; do
   kubectl config set-cluster kubernetes-the-hard-way \
     --certificate-authority=ca.pem \
@@ -334,7 +345,6 @@ for instance in worker01 worker02 worker03; do
 done
 
 # Generate a kubeconfig file for the kube-proxy service
-KUBERNETES_PUBLIC_ADDRESS="10.0.0.230" 
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.pem \
   --embed-certs=true \
@@ -415,10 +425,17 @@ kubectl config set-context default \
 kubectl config use-context default --kubeconfig=admin.kubeconfig
 
 # Copy the appropriate kubelet and kube-proxy kubeconfig files to each worker instance
-# worker-${id}.kubeconfig kube-proxy.kubeconfig worker-${id}:~/
+for instance in worker01 worker02 worker03; do
+  sshpass -f "/root/password" scp -r {$instance}.kubeconfig root@{$instance}:~/
+  sshpass -f "/root/password" scp -r kube-proxy.kubeconfig root@{$instance}:~/
+done
 
 # Copy the appropriate kube-controller-manager and kube-scheduler kubeconfig files to each controller instance
-# admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig master-${id}:~/
+for instance in master02 master03; do
+  sshpass -f "/root/password" scp -r admin.kubeconfig root@{$instance}:~/
+  sshpass -f "/root/password" scp -r kube-controller-manager.kubeconfig root@{$instance}:~/
+  sshpass -f "/root/password" scp -r kube-scheduler.kubeconfig root@{$instance}:~/
+done
 
 # Generate encryption key
 ENCRYPTION_KEY=$(head -c 32 /dev/urandom | base64)
@@ -438,15 +455,17 @@ resources:
 EOF
 
 # Copy the encryption-config.yaml encryption config file to each controller instance
-encryption-config.yaml master-${id}:~/
+for instance in master02 master03; do
+  sshpass -f "/root/password" scp -r encryption-config.yaml root@{$instance}:~/
+done
 
 # Download the official etcd release binaries from the etcd GitHub project
 wget -q \
   "https://github.com/etcd-io/etcd/releases/download/v3.4.0/etcd-v3.4.0-linux-amd64.tar.gz"
 
 # Extract and install the etcd server and the etcdctl command line utility
-sudo mkdir -p /etc/etcd /var/lib/etcd
-sudo cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
+mkdir -p /etc/etcd /var/lib/etcd
+cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
 
 ETCD_NAME=$(hostname -s)
 if [[ ETCD_NAME == "master-01" ]]; then 
@@ -512,12 +531,12 @@ wget -q \
 
 # Install the Kubernetes binaries
 chmod +x kube-apiserver kube-controller-manager kube-scheduler kubectl
-sudo mv kube-apiserver kube-controller-manager kube-scheduler kubectl /usr/local/bin/
+mv kube-apiserver kube-controller-manager kube-scheduler kubectl /usr/local/bin/
 
 # Configure the Kubernetes API Server
-sudo mkdir -p /var/lib/kubernetes/
+mkdir -p /var/lib/kubernetes/
 
-sudo mv ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
+mv ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
   service-account-key.pem service-account.pem \
   encryption-config.yaml /var/lib/kubernetes/
 
@@ -633,9 +652,9 @@ WantedBy=multi-user.target
 EOF
 
 # Start the Controller Services
-sudo systemctl daemon-reload
-sudo systemctl enable kube-apiserver kube-controller-manager kube-scheduler
-sudo systemctl start kube-apiserver kube-controller-manager kube-scheduler
+systemctl daemon-reload
+systemctl enable kube-apiserver kube-controller-manager kube-scheduler
+systemctl start kube-apiserver kube-controller-manager kube-scheduler
 
 # Install a basic web server to handle HTTP health checks
 yum install -y nginx
@@ -652,12 +671,11 @@ server {
 }
 EOF
 
-sudo mv kubernetes.default.svc.cluster.local \
+mv kubernetes.default.svc.cluster.local \
   /etc/nginx/sites-available/kubernetes.default.svc.cluster.local
 
-sudo ln -s /etc/nginx/sites-available/kubernetes.default.svc.cluster.local /etc/nginx/sites-enabled/
-
-sudo systemctl restart nginx
+ln -s /etc/nginx/sites-available/kubernetes.default.svc.cluster.local /etc/nginx/sites-enabled/
+systemctl restart nginx
 
 kubectl get componentstatuses --kubeconfig admin.kubeconfig
 curl -H "Host: kubernetes.default.svc.cluster.local" -i http://127.0.0.1/healthz
