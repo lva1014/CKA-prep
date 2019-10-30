@@ -149,13 +149,13 @@ cat > ${instance}-csr.json <<EOF
 EOF
 
 if [[ $instance == 'worker01' ]]; then
-  EXTERNAL_IP=10.0.0.231
+  EXTERNAL_IP=10.0.0.233
   INTERNAL_IP=172.16.0.21
 elif [[ $instance == 'worker01' ]]; then
-  EXTERNAL_IP=10.0.0.232
+  EXTERNAL_IP=10.0.0.234
   INTERNAL_IP=172.16.0.22
 elif [[ $instance == 'worker01' ]]; then
-  EXTERNAL_IP=10.0.0.233
+  EXTERNAL_IP=10.0.0.235
   INTERNAL_IP=172.16.0.23
 fi
 
@@ -275,7 +275,7 @@ cfssl gencert \
   -ca=ca.pem \
   -ca-key=ca-key.pem \
   -config=ca-config.json \
-  -hostname=10.32.0.1,10.240.0.10,10.240.0.11,10.240.0.12,10.0.0.231,127.0.0.1,${KUBERNETES_HOSTNAMES} \
+  -hostname=10.32.0.1,172.16.0.11,172.16.0.12,172.16.0.13,10.0.0.230,127.0.0.1,${KUBERNETES_HOSTNAMES} \
   -profile=kubernetes \
   kubernetes-csr.json | cfssljson -bare kubernetes
   
@@ -306,7 +306,206 @@ cfssl gencert \
   -profile=kubernetes \
   service-account-csr.json | cfssljson -bare service-account
   
- # copy keys to respective nodes
- # add CLIs
+# copy keys to respective nodes
+# add CLIs for :
+#   ca.pem, worker${id}-key.pem worker${id}.pem worker${id}:~/
+#   ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem service-account-key.pem service-account.pem master${id}:~/ 
   
-  
+# Generate a kubeconfig file for each worker node
+KUBERNETES_PUBLIC_ADDRESS="10.0.0.230" 
+for instance in worker01 worker02 worker03; do
+  kubectl config set-cluster kubernetes-the-hard-way \
+    --certificate-authority=ca.pem \
+    --embed-certs=true \
+    --server=https://${KUBERNETES_PUBLIC_ADDRESS}:6443 \
+    --kubeconfig=${instance}.kubeconfig
+
+  kubectl config set-credentials system:node:${instance} \
+    --client-certificate=${instance}.pem \
+    --client-key=${instance}-key.pem \
+    --embed-certs=true \
+    --kubeconfig=${instance}.kubeconfig
+
+  kubectl config set-context default \
+    --cluster=kubernetes-the-hard-way \
+    --user=system:node:${instance} \
+    --kubeconfig=${instance}.kubeconfig
+
+  kubectl config use-context default --kubeconfig=${instance}.kubeconfig
+done
+
+# Generate a kubeconfig file for the kube-proxy service
+KUBERNETES_PUBLIC_ADDRESS="10.0.0.230" 
+kubectl config set-cluster kubernetes-the-hard-way \
+  --certificate-authority=ca.pem \
+  --embed-certs=true \
+  --server=https://${KUBERNETES_PUBLIC_ADDRESS}:6443 \
+  --kubeconfig=kube-proxy.kubeconfig
+
+kubectl config set-credentials system:kube-proxy \
+  --client-certificate=kube-proxy.pem \
+  --client-key=kube-proxy-key.pem \
+  --embed-certs=true \
+  --kubeconfig=kube-proxy.kubeconfig
+
+kubectl config set-context default \
+  --cluster=kubernetes-the-hard-way \
+  --user=system:kube-proxy \
+  --kubeconfig=kube-proxy.kubeconfig
+
+kubectl config use-context default --kubeconfig=kube-proxy.kubeconfig
+
+# Generate a kubeconfig file for the kube-controller-manager service
+kubectl config set-cluster kubernetes-the-hard-way \
+  --certificate-authority=ca.pem \
+  --embed-certs=true \
+  --server=https://127.0.0.1:6443 \
+  --kubeconfig=kube-controller-manager.kubeconfig
+
+kubectl config set-credentials system:kube-controller-manager \
+  --client-certificate=kube-controller-manager.pem \
+  --client-key=kube-controller-manager-key.pem \
+  --embed-certs=true \
+  --kubeconfig=kube-controller-manager.kubeconfig
+
+kubectl config set-context default \
+  --cluster=kubernetes-the-hard-way \
+  --user=system:kube-controller-manager \
+  --kubeconfig=kube-controller-manager.kubeconfig
+
+kubectl config use-context default --kubeconfig=kube-controller-manager.kubeconfig
+
+# Generate a kubeconfig file for the kube-scheduler service
+kubectl config set-cluster kubernetes-the-hard-way \
+  --certificate-authority=ca.pem \
+  --embed-certs=true \
+  --server=https://127.0.0.1:6443 \
+  --kubeconfig=kube-scheduler.kubeconfig
+
+kubectl config set-credentials system:kube-scheduler \
+  --client-certificate=kube-scheduler.pem \
+  --client-key=kube-scheduler-key.pem \
+  --embed-certs=true \
+  --kubeconfig=kube-scheduler.kubeconfig
+
+kubectl config set-context default \
+  --cluster=kubernetes-the-hard-way \
+  --user=system:kube-scheduler \
+  --kubeconfig=kube-scheduler.kubeconfig
+
+kubectl config use-context default --kubeconfig=kube-scheduler.kubeconfig
+
+# Generate a kubeconfig file for the admin user
+kubectl config set-cluster kubernetes-the-hard-way \
+  --certificate-authority=ca.pem \
+  --embed-certs=true \
+  --server=https://127.0.0.1:6443 \
+  --kubeconfig=admin.kubeconfig
+
+kubectl config set-credentials admin \
+  --client-certificate=admin.pem \
+  --client-key=admin-key.pem \
+  --embed-certs=true \
+  --kubeconfig=admin.kubeconfig
+
+kubectl config set-context default \
+  --cluster=kubernetes-the-hard-way \
+  --user=admin \
+  --kubeconfig=admin.kubeconfig
+
+kubectl config use-context default --kubeconfig=admin.kubeconfig
+
+# Copy the appropriate kubelet and kube-proxy kubeconfig files to each worker instance
+# worker-${id}.kubeconfig kube-proxy.kubeconfig worker-${id}:~/
+
+# Copy the appropriate kube-controller-manager and kube-scheduler kubeconfig files to each controller instance
+# admin.kubeconfig kube-controller-manager.kubeconfig kube-scheduler.kubeconfig master-${id}:~/
+
+# Generate encryption key
+ENCRYPTION_KEY=$(head -c 32 /dev/urandom | base64)
+
+cat > encryption-config.yaml <<EOF
+kind: EncryptionConfig
+apiVersion: v1
+resources:
+  - resources:
+      - secrets
+    providers:
+      - aescbc:
+          keys:
+            - name: key1
+              secret: ${ENCRYPTION_KEY}
+      - identity: {}
+EOF
+
+# Copy the encryption-config.yaml encryption config file to each controller instance
+encryption-config.yaml master-${id}:~/
+
+# Download the official etcd release binaries from the etcd GitHub project
+wget -q \
+  "https://github.com/etcd-io/etcd/releases/download/v3.4.0/etcd-v3.4.0-linux-amd64.tar.gz"
+
+# Extract and install the etcd server and the etcdctl command line utility
+sudo mkdir -p /etc/etcd /var/lib/etcd
+sudo cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
+
+ETCD_NAME=$(hostname -s)
+if [[ ETCD_NAME == "master-01" ]]; then 
+  INTERNAL_IP="172.16.0.11"
+if [[ ETCD_NAME == "master-02" ]]; then 
+  INTERNAL_IP="172.16.0.12"
+if [[ ETCD_NAME == "master-03" ]]; then 
+  INTERNAL_IP="172.16.0.13"
+
+# Create the etcd.service systemd unit file
+cat <<EOF | sudo tee /etc/systemd/system/etcd.service
+[Unit]
+Description=etcd
+Documentation=https://github.com/coreos
+
+[Service]
+Type=notify
+ExecStart=/usr/local/bin/etcd \\
+  --name ${ETCD_NAME} \\
+  --cert-file=/etc/etcd/kubernetes.pem \\
+  --key-file=/etc/etcd/kubernetes-key.pem \\
+  --peer-cert-file=/etc/etcd/kubernetes.pem \\
+  --peer-key-file=/etc/etcd/kubernetes-key.pem \\
+  --trusted-ca-file=/etc/etcd/ca.pem \\
+  --peer-trusted-ca-file=/etc/etcd/ca.pem \\
+  --peer-client-cert-auth \\
+  --client-cert-auth \\
+  --initial-advertise-peer-urls https://${INTERNAL_IP}:2380 \\
+  --listen-peer-urls https://${INTERNAL_IP}:2380 \\
+  --listen-client-urls https://${INTERNAL_IP}:2379,https://127.0.0.1:2379 \\
+  --advertise-client-urls https://${INTERNAL_IP}:2379 \\
+  --initial-cluster-token etcd-cluster-0 \\
+  --initial-cluster controller-0=https://172.16.0.11:2380,controller-1=https://172.16.0.12:2380,controller-2=https://172.16.0.13:2380 \\
+  --initial-cluster-state new \\
+  --data-dir=/var/lib/etcd
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Start the etcd Server
+sudo systemctl daemon-reload
+sudo systemctl enable etcd
+sudo systemctl start etcd
+
+# Verification
+sudo ETCDCTL_API=3 etcdctl member list \
+  --endpoints=https://127.0.0.1:2379 \
+  --cacert=/etc/etcd/ca.pem \
+  --cert=/etc/etcd/kubernetes.pem \
+  --key=/etc/etcd/kubernetes-key.pem
+
+
+
+
+
+
+
+
