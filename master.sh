@@ -38,7 +38,7 @@ echo worker03 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNT
 
 # update packages
 yum update -y
-yum install -y wget net-tools tcpdump git
+yum install -y wget net-tools tcpdump git sshpass
 
 # disable FW
 systemctl stop firewalld
