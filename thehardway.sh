@@ -11,21 +11,20 @@ TEMP_LOCAL_IP=$(ip add | grep 172.16 | awk '{print($2)}' | rev | cut -c4- | rev)
 if [[ $TEMP_LOCAL_IP == '172.16.0.11' ]]; then
   hostnamectl set-hostname master01
   TEMP_LOCAL_HOSTNAME='master01'
-fi
-if [[ $TEMP_LOCAL_IP == '172.16.0.12' ]]; then
-  hostnamectl set-hostname master02
+elif [[ $TEMP_LOCAL_IP == '172.16.0.12' ]]; then
+  hostnamectl set-hostname master03
   TEMP_LOCAL_HOSTNAME='master02'
-fi
-if [[ $TEMP_LOCAL_IP == '172.16.0.21' ]]; then
-  hostnamectl set-hostname k8s-w1
+elif [[ $TEMP_LOCAL_IP == '172.16.0.13' ]]; then
+  hostnamectl set-hostname master03
+  TEMP_LOCAL_HOSTNAME='master03'  
+elif [[ $TEMP_LOCAL_IP == '172.16.0.21' ]]; then
+  hostnamectl set-hostname worker01
   TEMP_LOCAL_HOSTNAME='worker01'
-fi
-if [[ $TEMP_LOCAL_IP == '172.16.0.22' ]]; then
-  hostnamectl set-hostname k8s-w2
+elif [[ $TEMP_LOCAL_IP == '172.16.0.22' ]]; then
+  hostnamectl set-hostname worker02
   TEMP_LOCAL_HOSTNAME='worker02'
-fi
-if [[ $TEMP_LOCAL_IP == '172.16.0.23' ]]; then
-  hostnamectl set-hostname k8s-w3
+elif [[ $TEMP_LOCAL_IP == '172.16.0.23' ]]; then
+  hostnamectl set-hostname worker03
   TEMP_LOCAL_HOSTNAME='worker03'
 fi
 
