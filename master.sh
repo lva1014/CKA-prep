@@ -476,6 +476,7 @@ if [[ ETCD_NAME == "master-02" ]]; then
   INTERNAL_IP="172.16.0.12"
 if [[ ETCD_NAME == "master-03" ]]; then 
   INTERNAL_IP="172.16.0.13"
+fi
 
 # Create the etcd.service systemd unit file
 cat <<EOF | sudo tee /etc/systemd/system/etcd.service
@@ -549,6 +550,7 @@ if [[ TEMP_HOSTNAME == "master-02" ]]; then
   INTERNAL_IP="172.16.0.12"
 if [[ TEMP_HOSTNAME == "master-03" ]]; then 
   INTERNAL_IP="172.16.0.13"
+fi
 
 # Create the kube-apiserver.service systemd unit file:
 cat <<EOF | sudo tee /etc/systemd/system/kube-apiserver.service
