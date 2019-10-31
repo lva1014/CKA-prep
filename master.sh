@@ -504,6 +504,10 @@ mv etcd-v3.4.0-linux-amd64/etcd* /usr/local/bin/
 mkdir -p /etc/etcd /var/lib/etcd
 cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
 
+# Setting ETC_NAME
+echo -----\> Setting ETCD_NAME \<------
+ETCD_NAME=$(hostname -s)
+
 echo -----\> Setting ETCD Internal IP \<------
 if [[ ETCD_NAME == "master01" ]]; then 
   INTERNAL_IP="172.16.0.11"
@@ -512,10 +516,6 @@ elif [[ ETCD_NAME == "master02" ]]; then
 elif [[ ETCD_NAME == "master03" ]]; then 
   INTERNAL_IP="172.16.0.13"
 fi
-
-# Setting ETC_NAME
-echo -----\> Setting ETCD_NAME \<------
-ETCD_NAME=$(hostname -s)
 
 # Create the etcd.service systemd unit file
 echo -----\> Creating ETCD config \<------
