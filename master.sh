@@ -10,6 +10,7 @@ TEMP_LOCAL_IP=$(ip add | grep 172.16 | awk '{print($2)}' | rev | cut -c4- | rev)
 KUBERNETES_PUBLIC_ADDRESS="10.0.0.230" 
 
 # change hostname
+echo -----\> Chaning hostname \<------
 if [[ $TEMP_LOCAL_IP == '172.16.0.11' ]]; then
   hostnamectl set-hostname master01
   TEMP_LOCAL_HOSTNAME='master01'
@@ -22,12 +23,15 @@ elif [[ $TEMP_LOCAL_IP == '172.16.0.13' ]]; then
 fi
 
 # Add DNS records
+echo -----\> Modifying localhost entries \<------
 echo 172.16.0.11  master01 >> /etc/hosts
 echo 172.16.0.12  master02 >> /etc/hosts
 echo 172.16.0.21  worker01 >> /etc/hosts
 echo 172.16.0.22  worker02 >> /etc/hosts
 echo 172.16.0.23  worker03 >> /etc/hosts
 
+# Adding keys to known hosts
+echo -----\> SSH Keys \<------
 mkdir /root/.ssh
 touch /root/.ssh/known_hosts
 echo master02 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDawPicuxImfnUm3P+1zVAjXtW00yn0b5M6EE/JS4pzr16Rmimg/CDXDc59UL/bKEc6446PY04DmUrzdcw/8VWw= > /root/.ssh/known_hosts
@@ -42,18 +46,22 @@ echo 172.16.0.22 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHA
 echo 172.16.0.23 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDawPicuxImfnUm3P+1zVAjXtW00yn0b5M6EE/JS4pzr16Rmimg/CDXDc59UL/bKEc6446PY04DmUrzdcw/8VWw= > /root/.ssh/known_hosts
 
 # update packages
+echo -----\> Updating Packages \<------
 yum update -y
 yum install -y wget net-tools tcpdump git sshpass
 
 # disable FW
+echo -----\> Disabling FW \<------
 systemctl stop firewalld
 systemctl disable firewalld
 
 # Turn off swap and update fstab
+echo -----\> Swap OFF \<------
 swapoff -a
 sed -i  '/swap/d' /etc/fstab
 
 # Get cfssl util
+echo -----\> Downloading CFSSL \<------
 wget -q \
   https://storage.googleapis.com/kubernetes-the-hard-way/cfssl/linux/cfssl \
   https://storage.googleapis.com/kubernetes-the-hard-way/cfssl/linux/cfssljson
@@ -61,12 +69,14 @@ chmod +x cfssl cfssljson
 mv cfssl cfssljson /usr/local/bin/
 
 # Install kubectl
+echo -----\> Installing kubectl \<------
 wget https://storage.googleapis.com/kubernetes-release/release/v1.15.3/bin/linux/amd64/kubectl
 chmod +x kubectl
 mv kubectl /usr/local/bin/
 
 # Provision a Certificate Authority that can be used to generate additional TLS certificates
 # Generate the CA configuration file, certificate, and private key
+echo -----\> Generating Certificates \<------
 cat > ca-config.json <<EOF
 {
   "signing": {
@@ -152,6 +162,8 @@ cat > $instance-csr.json <<EOF
 }
 EOF
 
+# Adding variables
+echo -----\> Adding vairables for EXT_IP,INT_IP \<------
 if [[ $instance == 'worker01' ]]; then
   EXTERNAL_IP=10.0.0.233
   INTERNAL_IP=172.16.0.21
@@ -163,6 +175,8 @@ elif [[ $instance == 'worker01' ]]; then
   INTERNAL_IP=172.16.0.23
 fi
 
+# Generating Certificate
+echo -----\> Generating Certificates \<------
 cfssl gencert \
   -ca=ca.pem \
   -ca-key=ca-key.pem \
@@ -173,6 +187,7 @@ cfssl gencert \
 done
 
 # Generate the kube-controller-manager client certificate and private key
+echo -----\> Generaring kube-controller-manager certificates \<------
 cat > kube-controller-manager-csr.json <<EOF
 {
   "CN": "system:kube-controller-manager",
@@ -200,6 +215,7 @@ cfssl gencert \
   kube-controller-manager-csr.json | cfssljson -bare kube-controller-manager
 
 # Generate the kube-proxy client certificate and private key
+echo -----\> Generating kube-proxy certificates \<------
 cat > kube-proxy-csr.json <<EOF
 {
   "CN": "system:kube-proxy",
@@ -227,6 +243,7 @@ cfssl gencert \
   kube-proxy-csr.json | cfssljson -bare kube-proxy
 
 # Generate the kube-scheduler client certificate and private key
+echo -----\> Generating kube-scheduler ceriticates \<------
 cat > kube-scheduler-csr.json <<EOF
 {
   "CN": "system:kube-scheduler",
@@ -254,6 +271,7 @@ cfssl gencert \
   kube-scheduler-csr.json | cfssljson -bare kube-scheduler
   
 # Generate the Kubernetes API Server certificate and private key
+echo -----\> Generating kube-api certificates \<------
 KUBERNETES_HOSTNAMES=kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster,kubernetes.svc.cluster.local
 
 cat > kubernetes-csr.json <<EOF
@@ -284,6 +302,7 @@ cfssl gencert \
   kubernetes-csr.json | cfssljson -bare kubernetes
   
 # Generate the service-account certificate and private key
+echo -----\> Generating service account \<------
 cat > service-account-csr.json <<EOF
 {
   "CN": "service-accounts",
@@ -311,11 +330,14 @@ cfssl gencert \
   service-account-csr.json | cfssljson -bare service-account
   
 # copy keys to respective nodes
+echo -----\> Copying keys to master nodes \<------
 for instance in worker01 worker02 worker03; do
   sshpass -f "/root/password" scp -r ca.pem root@$instance:~/
   sshpass -f "/root/password" scp -r $instance-key.pem root@$instance:~/
   sshpass -f "/root/password" scp -r $instance.pem root@$instance:~/
 done
+
+echo -----\> Copying keys to worker nodes \<------
 for instance in master02 master03; do
   sshpass -f "/root/password" scp -r ca.pem root@$instance:~/
   sshpass -f "/root/password" scp -r ca-key.pem root@$instance:~/
@@ -325,6 +347,7 @@ for instance in master02 master03; do
 done
   
 # Generate a kubeconfig file for each worker node
+echo -----\> Generating kubeconfig for each worker node \<------
 for instance in worker01 worker02 worker03; do
   kubectl config set-cluster kubernetes-the-hard-way \
     --certificate-authority=ca.pem \
@@ -347,6 +370,7 @@ for instance in worker01 worker02 worker03; do
 done
 
 # Generate a kubeconfig file for the kube-proxy service
+echo -----\> Generating kubeconfig for kube-proxy \<------
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.pem \
   --embed-certs=true \
@@ -367,6 +391,7 @@ kubectl config set-context default \
 kubectl config use-context default --kubeconfig=kube-proxy.kubeconfig
 
 # Generate a kubeconfig file for the kube-controller-manager service
+echo -----\> Generating kubeconfig for kube-controller \<------
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.pem \
   --embed-certs=true \
@@ -387,6 +412,7 @@ kubectl config set-context default \
 kubectl config use-context default --kubeconfig=kube-controller-manager.kubeconfig
 
 # Generate a kubeconfig file for the kube-scheduler service
+echo -----\> Generating kubeconfig for kube-scheduler \<------
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.pem \
   --embed-certs=true \
@@ -407,6 +433,7 @@ kubectl config set-context default \
 kubectl config use-context default --kubeconfig=kube-scheduler.kubeconfig
 
 # Generate a kubeconfig file for the admin user
+echo -----\> Generating kubeconfig for admin user \<------
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.pem \
   --embed-certs=true \
@@ -427,12 +454,14 @@ kubectl config set-context default \
 kubectl config use-context default --kubeconfig=admin.kubeconfig
 
 # Copy the appropriate kubelet and kube-proxy kubeconfig files to each worker instance
+echo -----\> Copying configs to worker nodes \<------
 for instance in worker01 worker02 worker03; do
   sshpass -f "/root/password" scp -r $instance.kubeconfig root@$instance:~/
   sshpass -f "/root/password" scp -r kube-proxy.kubeconfig root@$instance:~/
 done
 
 # Copy the appropriate kube-controller-manager and kube-scheduler kubeconfig files to each controller instance
+echo -----\> Copying configs to master nodes \<------
 for instance in master02 master03; do
   sshpass -f "/root/password" scp -r admin.kubeconfig root@$instance:~/
   sshpass -f "/root/password" scp -r kube-controller-manager.kubeconfig root@$instance:~/
@@ -440,6 +469,7 @@ for instance in master02 master03; do
 done
 
 # Generate encryption key
+echo -----\> Generating enc key \<------
 ENCRYPTION_KEY=$(head -c 32 /dev/urandom | base64)
 
 cat > encryption-config.yaml <<EOF
@@ -457,6 +487,7 @@ resources:
 EOF
 
 # Copy the encryption-config.yaml encryption config file to each controller instance
+echo -----\> Copying enc config to each controller node \<------
 for instance in master02 master03; do
   sshpass -f "/root/password" scp -r encryption-config.yaml root@$instance:~/
 done
@@ -466,9 +497,12 @@ wget -q \
   "https://github.com/etcd-io/etcd/releases/download/v3.4.0/etcd-v3.4.0-linux-amd64.tar.gz"
 
 # Extract and install the etcd server and the etcdctl command line utility
+echo -----\> Installing ETCD server \<------
 mkdir -p /etc/etcd /var/lib/etcd
 cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
 
+# Setting ETC_NAME
+echo -----\> Setting ETCD_NAME \<------
 ETCD_NAME=$(hostname -s)
 if [[ ETCD_NAME == "master-01" ]]; then 
   INTERNAL_IP="172.16.0.11"
@@ -479,6 +513,7 @@ if [[ ETCD_NAME == "master-03" ]]; then
 fi
 
 # Create the etcd.service systemd unit file
+echo -----\> Creating ETCD config \<------
 cat <<EOF | sudo tee /etc/systemd/system/etcd.service
 [Unit]
 Description=etcd
@@ -512,19 +547,22 @@ WantedBy=multi-user.target
 EOF
 
 # Start the etcd Server
+echo -----\> Starting ETCD server \<------
 sudo systemctl daemon-reload
 sudo systemctl enable etcd
 sudo systemctl start etcd
 
 # Verification
-sudo ETCDCTL_API=3 etcdctl member list \
-  --endpoints=https://127.0.0.1:2379 \
-  --cacert=/etc/etcd/ca.pem \
-  --cert=/etc/etcd/kubernetes.pem \
-  --key=/etc/etcd/kubernetes-key.pem
+#echo -----\> Verifying ETCD server \<------
+#sudo ETCDCTL_API=3 etcdctl member list \
+#  --endpoints=https://127.0.0.1:2379 \
+#  --cacert=/etc/etcd/ca.pem \
+#  --cert=/etc/etcd/kubernetes.pem \
+#  --key=/etc/etcd/kubernetes-key.pem
 
 # Provision the Kubernetes Control Plane
 # Create the Kubernetes configuration directory
+echo -----\> Creating kubernetes configs \<------
 mkdir -p /etc/kubernetes/config
 wget -q \
   "https://storage.googleapis.com/kubernetes-release/release/v1.15.3/bin/linux/amd64/kube-apiserver" \
@@ -533,16 +571,20 @@ wget -q \
   "https://storage.googleapis.com/kubernetes-release/release/v1.15.3/bin/linux/amd64/kubectl"
 
 # Install the Kubernetes binaries
+echo -----\> Installing kubernetes binaries \<------
 chmod +x kube-apiserver kube-controller-manager kube-scheduler kubectl
 mv kube-apiserver kube-controller-manager kube-scheduler kubectl /usr/local/bin/
 
 # Configure the Kubernetes API Server
+echo -----\> Configuring API Server \<------
 mkdir -p /var/lib/kubernetes/
 
 mv ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
   service-account-key.pem service-account.pem \
   encryption-config.yaml /var/lib/kubernetes/
-
+ 
+# Setting TEMP_HOSTNAME
+echo -----\> Setting TEMP_HOSTNAME \<------
 TEMP_HOSTNAME=$(hostname -s)
 if [[ TEMP_HOSTNAME == "master-01" ]]; then 
   INTERNAL_IP="172.16.0.11"
@@ -553,6 +595,7 @@ if [[ TEMP_HOSTNAME == "master-03" ]]; then
 fi
 
 # Create the kube-apiserver.service systemd unit file:
+echo -----\> Creating kube-apiserver config \<------
 cat <<EOF | sudo tee /etc/systemd/system/kube-apiserver.service
 [Unit]
 Description=Kubernetes API Server
@@ -599,6 +642,7 @@ EOF
 mv kube-controller-manager.kubeconfig /var/lib/kubernetes/
 
 # Create the kube-controller-manager.service systemd unit file
+echo -----\> Creating controller config file \<------
 cat <<EOF | sudo tee /etc/systemd/system/kube-controller-manager.service
 [Unit]
 Description=Kubernetes Controller Manager
@@ -626,9 +670,11 @@ WantedBy=multi-user.target
 EOF
 
 # Move the kube-scheduler kubeconfig into place
+echo -----\> Moving kontrollers config into place \<------
 mv kube-scheduler.kubeconfig /var/lib/kubernetes/
 
 # Create the kube-scheduler.yaml configuration file
+echo -----\> Creating scheduler config into place \<------
 cat <<EOF | sudo tee /etc/kubernetes/config/kube-scheduler.yaml
 apiVersion: kubescheduler.config.k8s.io/v1alpha1
 kind: KubeSchedulerConfiguration
@@ -639,6 +685,7 @@ leaderElection:
 EOF
 
 # Create the kube-scheduler.service systemd unit file
+echo -----\> Creating kube-scheduler config \<------
 cat <<EOF | sudo tee /etc/systemd/system/kube-scheduler.service
 [Unit]
 Description=Kubernetes Scheduler
@@ -656,11 +703,13 @@ WantedBy=multi-user.target
 EOF
 
 # Start the Controller Services
+echo -----\> Starting controller \<------
 systemctl daemon-reload
 systemctl enable kube-apiserver kube-controller-manager kube-scheduler
 systemctl start kube-apiserver kube-controller-manager kube-scheduler
 
 # Install a basic web server to handle HTTP health checks
+echo -----\> Installing nginx \<------
 yum install -y nginx
 
 cat > kubernetes.default.svc.cluster.local <<EOF
@@ -686,6 +735,7 @@ kubectl get componentstatuses --kubeconfig admin.kubeconfig
 curl -H "Host: kubernetes.default.svc.cluster.local" -i http://127.0.0.1/healthz
 
 # Create the system:kube-apiserver-to-kubelet ClusterRole with permissions to access the Kubelet API and perform most common tasks associated with managing pods
+echo -----\> create permissions \<------
 cat <<EOF | kubectl apply --kubeconfig admin.kubeconfig -f -
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRole
@@ -709,6 +759,7 @@ rules:
 EOF
 
 # Bind the system:kube-apiserver-to-kubelet ClusterRole to the kubernetes user
+echo -----\> Binding \<------
 cat <<EOF | kubectl apply --kubeconfig admin.kubeconfig -f -
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
