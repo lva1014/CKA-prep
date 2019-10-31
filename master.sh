@@ -522,7 +522,7 @@ fi
 sshpass -f "/root/password" ssh root@$instance 'systemctl stop firewalld'
 sshpass -f "/root/password" ssh root@$instance 'systemctl disable firewalld'
 sshpass -f "/root/password" ssh root@$instance 'swapoff -a'
-sshpass -f "/root/password" ssh root@$instance 'sed -i  \'/swap/d\' /etc/fstab'
+sshpass -f "/root/password" ssh root@$instance "sed -i  '/swap/d' /etc/fstab"
 sshpass -f "/root/password" ssh root@$instance 'hostnamectl set-hostname $instance'
 
 sshpass -f "/root/password" scp -r etcd-v3.4.0-linux-amd64.tar.gz root@$instance:~/
