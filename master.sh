@@ -590,9 +590,9 @@ echo -----\> Setting TEMP_HOSTNAME \<------
 TEMP_HOSTNAME=$(hostname -s)
 if [[ TEMP_HOSTNAME == "master-01" ]]; then 
   INTERNAL_IP="172.16.0.11"
-if [[ TEMP_HOSTNAME == "master-02" ]]; then 
+elif [[ TEMP_HOSTNAME == "master-02" ]]; then 
   INTERNAL_IP="172.16.0.12"
-if [[ TEMP_HOSTNAME == "master-03" ]]; then 
+elif [[ TEMP_HOSTNAME == "master-03" ]]; then 
   INTERNAL_IP="172.16.0.13"
 fi
 
