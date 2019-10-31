@@ -499,6 +499,8 @@ wget -q \
 
 # Extract and install the etcd server and the etcdctl command line utility
 echo -----\> Installing ETCD server \<------
+tar -xvf etcd-v3.4.0-linux-amd64.tar.gz
+mv etcd-v3.4.0-linux-amd64/etcd* /usr/local/bin/
 mkdir -p /etc/etcd /var/lib/etcd
 cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
 
