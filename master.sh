@@ -35,6 +35,11 @@ echo master03 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNT
 echo worker01 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDawPicuxImfnUm3P+1zVAjXtW00yn0b5M6EE/JS4pzr16Rmimg/CDXDc59UL/bKEc6446PY04DmUrzdcw/8VWw= > /root/.ssh/known_hosts
 echo worker02 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDawPicuxImfnUm3P+1zVAjXtW00yn0b5M6EE/JS4pzr16Rmimg/CDXDc59UL/bKEc6446PY04DmUrzdcw/8VWw= > /root/.ssh/known_hosts
 echo worker03 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDawPicuxImfnUm3P+1zVAjXtW00yn0b5M6EE/JS4pzr16Rmimg/CDXDc59UL/bKEc6446PY04DmUrzdcw/8VWw= > /root/.ssh/known_hosts
+echo 172.16.0.12 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDawPicuxImfnUm3P+1zVAjXtW00yn0b5M6EE/JS4pzr16Rmimg/CDXDc59UL/bKEc6446PY04DmUrzdcw/8VWw= > /root/.ssh/known_hosts
+echo 172.16.0.13 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDawPicuxImfnUm3P+1zVAjXtW00yn0b5M6EE/JS4pzr16Rmimg/CDXDc59UL/bKEc6446PY04DmUrzdcw/8VWw= > /root/.ssh/known_hosts
+echo 172.16.0.21 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDawPicuxImfnUm3P+1zVAjXtW00yn0b5M6EE/JS4pzr16Rmimg/CDXDc59UL/bKEc6446PY04DmUrzdcw/8VWw= > /root/.ssh/known_hosts
+echo 172.16.0.22 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDawPicuxImfnUm3P+1zVAjXtW00yn0b5M6EE/JS4pzr16Rmimg/CDXDc59UL/bKEc6446PY04DmUrzdcw/8VWw= > /root/.ssh/known_hosts
+echo 172.16.0.23 ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYAAAAIbmlzdHAyNTYAAABBBDawPicuxImfnUm3P+1zVAjXtW00yn0b5M6EE/JS4pzr16Rmimg/CDXDc59UL/bKEc6446PY04DmUrzdcw/8VWw= > /root/.ssh/known_hosts
 
 # update packages
 yum update -y
@@ -128,9 +133,9 @@ cfssl gencert \
   admin-csr.json | cfssljson -bare admin
   
 for instance in worker01 worker02 worker03; do
-cat > ${instance}-csr.json <<EOF
+cat > $instance-csr.json <<EOF
 {
-  "CN": "system:node:${instance}",
+  "CN": "system:node:$instance",
   "key": {
     "algo": "rsa",
     "size": 2048
@@ -162,9 +167,9 @@ cfssl gencert \
   -ca=ca.pem \
   -ca-key=ca-key.pem \
   -config=ca-config.json \
-  -hostname=${instance},${EXTERNAL_IP},${INTERNAL_IP} \
+  -hostname=$instance,$EXTERNAL_IP,$INTERNAL_IP \
   -profile=kubernetes \
-  ${instance}-csr.json | cfssljson -bare ${instance}
+  $instance-csr.json | cfssljson -bare $instance
 done
 
 # Generate the kube-controller-manager client certificate and private key
@@ -307,16 +312,16 @@ cfssl gencert \
   
 # copy keys to respective nodes
 for instance in worker01 worker02 worker03; do
-  sshpass -f "/root/password" scp -r ca.pem root@{$instance}:~/
-  sshpass -f "/root/password" scp -r {$instance}-key.pem root@{$instance}:~/
-  sshpass -f "/root/password" scp -r {$instance}.pem root@{$instance}:~/
+  sshpass -f "/root/password" scp -r ca.pem root@$instance:~/
+  sshpass -f "/root/password" scp -r $instance-key.pem root@$instance:~/
+  sshpass -f "/root/password" scp -r $instance.pem root@$instance:~/
 done
 for instance in master02 master03; do
-  sshpass -f "/root/password" scp -r ca.pem root@{$instance}:~/
-  sshpass -f "/root/password" scp -r ca-key.pem root@{$instance}:~/
-  sshpass -f "/root/password" scp -r kubernetes-key.pem root@{$instance}:~/
-  sshpass -f "/root/password" scp -r service-account-key.pem root@{$instance}:~/
-  sshpass -f "/root/password" scp -r service-account.pem root@{$instance}:~/
+  sshpass -f "/root/password" scp -r ca.pem root@$instance:~/
+  sshpass -f "/root/password" scp -r ca-key.pem root@$instance:~/
+  sshpass -f "/root/password" scp -r kubernetes-key.pem root@$instance:~/
+  sshpass -f "/root/password" scp -r service-account-key.pem root@$instance:~/
+  sshpass -f "/root/password" scp -r service-account.pem root@$instance:~/
 done
   
 # Generate a kubeconfig file for each worker node
@@ -324,28 +329,28 @@ for instance in worker01 worker02 worker03; do
   kubectl config set-cluster kubernetes-the-hard-way \
     --certificate-authority=ca.pem \
     --embed-certs=true \
-    --server=https://${KUBERNETES_PUBLIC_ADDRESS}:6443 \
-    --kubeconfig=${instance}.kubeconfig
+    --server=https://$KUBERNETES_PUBLIC_ADDRESS:6443 \
+    --kubeconfig=$instance.kubeconfig
 
-  kubectl config set-credentials system:node:${instance} \
-    --client-certificate=${instance}.pem \
-    --client-key=${instance}-key.pem \
+  kubectl config set-credentials system:node:$instance \
+    --client-certificate=$instance.pem \
+    --client-key=$instance-key.pem \
     --embed-certs=true \
-    --kubeconfig=${instance}.kubeconfig
+    --kubeconfig=$instance.kubeconfig
 
   kubectl config set-context default \
     --cluster=kubernetes-the-hard-way \
-    --user=system:node:${instance} \
-    --kubeconfig=${instance}.kubeconfig
+    --user=system:node:$instance \
+    --kubeconfig=$instance.kubeconfig
 
-  kubectl config use-context default --kubeconfig=${instance}.kubeconfig
+  kubectl config use-context default --kubeconfig=$instance.kubeconfig
 done
 
 # Generate a kubeconfig file for the kube-proxy service
 kubectl config set-cluster kubernetes-the-hard-way \
   --certificate-authority=ca.pem \
   --embed-certs=true \
-  --server=https://${KUBERNETES_PUBLIC_ADDRESS}:6443 \
+  --server=https://$KUBERNETES_PUBLIC_ADDRESS:6443 \
   --kubeconfig=kube-proxy.kubeconfig
 
 kubectl config set-credentials system:kube-proxy \
@@ -447,7 +452,7 @@ resources:
       - aescbc:
           keys:
             - name: key1
-              secret: ${ENCRYPTION_KEY}
+              secret: $ENCRYPTION_KEY
       - identity: {}
 EOF
 
@@ -481,7 +486,7 @@ Documentation=https://github.com/coreos
 [Service]
 Type=notify
 ExecStart=/usr/local/bin/etcd \\
-  --name ${ETCD_NAME} \\
+  --name $ETCD_NAME \\
   --cert-file=/etc/etcd/kubernetes.pem \\
   --key-file=/etc/etcd/kubernetes-key.pem \\
   --peer-cert-file=/etc/etcd/kubernetes.pem \\
@@ -490,10 +495,10 @@ ExecStart=/usr/local/bin/etcd \\
   --peer-trusted-ca-file=/etc/etcd/ca.pem \\
   --peer-client-cert-auth \\
   --client-cert-auth \\
-  --initial-advertise-peer-urls https://${INTERNAL_IP}:2380 \\
-  --listen-peer-urls https://${INTERNAL_IP}:2380 \\
-  --listen-client-urls https://${INTERNAL_IP}:2379,https://127.0.0.1:2379 \\
-  --advertise-client-urls https://${INTERNAL_IP}:2379 \\
+  --initial-advertise-peer-urls https://$INTERNAL_IP:2380 \\
+  --listen-peer-urls https://$INTERNAL_IP:2380 \\
+  --listen-client-urls https://$INTERNAL_IP:2379,https://127.0.0.1:2379 \\
+  --advertise-client-urls https://$INTERNAL_IP:2379 \\
   --initial-cluster-token etcd-cluster-0 \\
   --initial-cluster controller-0=https://172.16.0.11:2380,controller-1=https://172.16.0.12:2380,controller-2=https://172.16.0.13:2380 \\
   --initial-cluster-state new \\
@@ -553,7 +558,7 @@ Documentation=https://github.com/kubernetes/kubernetes
 
 [Service]
 ExecStart=/usr/local/bin/kube-apiserver \\
-  --advertise-address=${INTERNAL_IP} \\
+  --advertise-address=$INTERNAL_IP \\
   --allow-privileged=true \\
   --apiserver-count=3 \\
   --audit-log-maxage=30 \\
@@ -662,7 +667,8 @@ server {
   server_name kubernetes.default.svc.cluster.local;
 
   location /healthz {
-     proxy_pass                    https://127.0.0.1:6443/healthz;
+     proxy_pass                    
+     https://127.0.0.1:6443/healthz;
      proxy_ssl_trusted_certificate /var/lib/kubernetes/ca.pem;
   }
 }
