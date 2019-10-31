@@ -501,16 +501,18 @@ echo -----\> Installing ETCD server \<------
 mkdir -p /etc/etcd /var/lib/etcd
 cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
 
+echo -----\> Setting ETCD Internal IP \<------
+if [[ ETCD_NAME == "master-01" ]]; then 
+  INTERNAL_IP="172.16.0.11"
+elif [[ ETCD_NAME == "master-02" ]]; then 
+  INTERNAL_IP="172.16.0.12"
+elif [[ ETCD_NAME == "master-03" ]]; then 
+  INTERNAL_IP="172.16.0.13"
+fi
+
 # Setting ETC_NAME
 echo -----\> Setting ETCD_NAME \<------
 ETCD_NAME=$(hostname -s)
-if [[ ETCD_NAME == "master-01" ]]; then 
-  INTERNAL_IP="172.16.0.11"
-if [[ ETCD_NAME == "master-02" ]]; then 
-  INTERNAL_IP="172.16.0.12"
-if [[ ETCD_NAME == "master-03" ]]; then 
-  INTERNAL_IP="172.16.0.13"
-fi
 
 # Create the etcd.service systemd unit file
 echo -----\> Creating ETCD config \<------
