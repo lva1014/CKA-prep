@@ -510,7 +510,7 @@ sshpass -f "/root/password" scp -r ca.pem kubernetes-key.pem kubernetes.pem root
 sshpass -f "/root/password" scp -r ca.pem kubernetes-key.pem kubernetes.pem root@master03:~/
 
 # setup etcd on master02 and master03
-for instance master02 master03; do
+for instance in master02 master03; do
     if [[ $instance == 'master02' ]]; then
       INTERNAL_IP=1762.16.0.12
       ETCD_NAME=$instance
