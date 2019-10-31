@@ -506,17 +506,26 @@ tar -xvf etcd-v3.4.0-linux-amd64.tar.gz
 mv etcd-v3.4.0-linux-amd64/etcd* /usr/local/bin/
 mkdir -p /etc/etcd /var/lib/etcd
 cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
+sshpass -f "/root/password" scp -r ca.pem kubernetes-key.pem kubernetes.pem root@master02:~/
+sshpass -f "/root/password" scp -r ca.pem kubernetes-key.pem kubernetes.pem root@master03:~/
 
-# setup etcd on master02
-sshpass -f "/root/password" scp -r etcd-v3.4.0-linux-amd64.tar.gz root@master02:~/
-sshpass -f "/root/password" ssh root@master02 'tar -xvf /root/etcd-v3.4.0-linux-amd64.tar.gz'
-sshpass -f "/root/password" ssh root@master02 'mv /root/etcd-v3.4.0-linux-amd64/etcd* /usr/local/bin/'
-sshpass -f "/root/password" ssh root@master02 'mkdir -p /etc/etcd /var/lib/etcd'
-sshpass -f "/root/password" ssh root@master02 'cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/'
-#
-INTERNAL_IP="172.16.0.12"
-ETCD_NAME="master02"
-cat <<EOF | sudo tee /root/master02.temp.etcd
+# setup etcd on master02 and master03
+sfor instance master02 master03; do
+if [[ $instance == 'master02' ]]; then
+  INTERNAL_IP=1762.16.0.12
+  ETCD_NAME=$instance
+elif [[ $instance == 'master02' ]]; then
+  INTERNAL_IP=1762.16.0.13
+  ETCD_NAME=$instance
+fi
+
+sshpass -f "/root/password" scp -r etcd-v3.4.0-linux-amd64.tar.gz root@$instance:~/
+sshpass -f "/root/password" ssh root@$instance 'tar -xvf /root/etcd-v3.4.0-linux-amd64.tar.gz'
+sshpass -f "/root/password" ssh root@$instance 'mv /root/etcd-v3.4.0-linux-amd64/etcd* /usr/local/bin/'
+sshpass -f "/root/password" ssh root@$instance 'mkdir -p /etc/etcd /var/lib/etcd'
+sshpass -f "/root/password" ssh root@$instance 'cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/'
+
+cat <<EOF | sudo tee /root/$instance.temp.etcd
 [Unit]
 Description=etcd
 Documentation=https://github.com/coreos
@@ -547,54 +556,13 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 EOF
-sshpass -f "/root/password" scp -r /root/master02.temp.etcd root@master02:/etc/systemd/system/etcd.service
-sshpass -f "/root/password" ssh root@master02 'systemctl daemon-reload'
-sshpass -f "/root/password" ssh root@master02 'systemctl enable etcd'
-rm -f master02.temp.etcd
 
-# setup etcd on master03
-sshpass -f "/root/password" scp -r etcd-v3.4.0-linux-amd64.tar.gz root@master03:~/
-sshpass -f "/root/password" ssh root@master03 'tar -xvf /root/etcd-v3.4.0-linux-amd64.tar.gz'
-sshpass -f "/root/password" ssh root@master03 'mv /root/etcd-v3.4.0-linux-amd64/etcd* /usr/local/bin/'
-sshpass -f "/root/password" ssh root@master03 'mkdir -p /etc/etcd /var/lib/etcd'
-sshpass -f "/root/password" ssh root@master03 'cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/'
-INTERNAL_IP="172.16.0.13"
-ETCD_NAME="master03"
-cat <<EOF | sudo tee /root/master03.temp.etcd
-[Unit]
-Description=etcd
-Documentation=https://github.com/coreos
+sshpass -f "/root/password" scp -r /root/$instance.temp.etcd root@$instance:/etc/systemd/system/etcd.service
+sshpass -f "/root/password" ssh root@$instance 'systemctl daemon-reload'
+sshpass -f "/root/password" ssh root@$instance 'systemctl enable etcd'
+rm -f $instance.temp.etcd
 
-[Service]
-Type=notify
-ExecStart=/usr/local/bin/etcd \\
-  --name $ETCD_NAME \\
-  --cert-file=/etc/etcd/kubernetes.pem \\
-  --key-file=/etc/etcd/kubernetes-key.pem \\
-  --peer-cert-file=/etc/etcd/kubernetes.pem \\
-  --peer-key-file=/etc/etcd/kubernetes-key.pem \\
-  --trusted-ca-file=/etc/etcd/ca.pem \\
-  --peer-trusted-ca-file=/etc/etcd/ca.pem \\
-  --peer-client-cert-auth \\
-  --client-cert-auth \\
-  --initial-advertise-peer-urls https://$INTERNAL_IP:2380 \\
-  --listen-peer-urls https://$INTERNAL_IP:2380 \\
-  --listen-client-urls https://$INTERNAL_IP:2379,https://127.0.0.1:2379 \\
-  --advertise-client-urls https://$INTERNAL_IP:2379 \\
-  --initial-cluster-token etcd-cluster-0 \\
-  --initial-cluster master01=https://172.16.0.11:2380,master02=https://172.16.0.12:2380,master03=https://172.16.0.13:2380 \\
-  --initial-cluster-state new \\
-  --data-dir=/var/lib/etcd
-Restart=on-failure
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
-sshpass -f "/root/password" scp -r /root/master03.temp.etcd root@master03:/etc/systemd/system/etcd.service
-sshpass -f "/root/password" ssh root@master03 'systemctl daemon-reload'
-sshpass -f "/root/password" ssh root@master03 'systemctl enable etcd'
-rm -f master03.temp.etcd
+done
 
 # Create the etcd.service systemd unit file
 echo -----\> Creating ETCD config \<------
