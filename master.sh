@@ -301,7 +301,7 @@ cfssl gencert \
   -ca=ca.pem \
   -ca-key=ca-key.pem \
   -config=ca-config.json \
-  -hostname=10.32.0.1,172.16.0.11,172.16.0.12,172.16.0.13,10.0.0.230,127.0.0.1,${KUBERNETES_HOSTNAMES} \
+  -hostname=10.32.0.1,172.16.0.11,172.16.0.12,172.16.0.13,10.0.0.230,127.0.0.1,$KUBERNETES_HOSTNAMES \
   -profile=kubernetes \
   kubernetes-csr.json | cfssljson -bare kubernetes
   
@@ -547,7 +547,7 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 EOF
-sshpass -f "/root/password" scp -r /root/master02.temp.etcd root@master02:~/etc/systemd/system/etcd.service
+sshpass -f "/root/password" scp -r /root/master02.temp.etcd root@master02:/etc/systemd/system/etcd.service
 sshpass -f "/root/password" ssh root@master02 'systemctl daemon-reload'
 sshpass -f "/root/password" ssh root@master02 'systemctl enable etcd'
 rm -f master02.temp.etcd
@@ -591,7 +591,7 @@ RestartSec=5
 [Install]
 WantedBy=multi-user.target
 EOF
-sshpass -f "/root/password" scp -r /root/master03.temp.etcd root@master03:~/etc/systemd/system/etcd.service
+sshpass -f "/root/password" scp -r /root/master03.temp.etcd root@master03:/etc/systemd/system/etcd.service
 sshpass -f "/root/password" ssh root@master03 'systemctl daemon-reload'
 sshpass -f "/root/password" ssh root@master03 'systemctl enable etcd'
 rm -f master03.temp.etcd
