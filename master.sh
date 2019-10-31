@@ -26,6 +26,7 @@ fi
 echo -----\> Modifying localhost entries \<------
 echo 172.16.0.11  master01 >> /etc/hosts
 echo 172.16.0.12  master02 >> /etc/hosts
+echo 172.16.0.13  master03 >> /etc/hosts
 echo 172.16.0.21  worker01 >> /etc/hosts
 echo 172.16.0.22  worker02 >> /etc/hosts
 echo 172.16.0.23  worker03 >> /etc/hosts
