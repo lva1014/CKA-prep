@@ -509,11 +509,11 @@ echo -----\> Setting ETCD_NAME \<------
 ETCD_NAME=$(hostname -s)
 
 echo -----\> Setting ETCD Internal IP \<------
-if [[ ETCD_NAME == "master01" ]]; then 
+if [[ $ETCD_NAME == "master01" ]]; then 
   INTERNAL_IP="172.16.0.11"
-elif [[ ETCD_NAME == "master02" ]]; then 
+elif [[ $ETCD_NAME == "master02" ]]; then 
   INTERNAL_IP="172.16.0.12"
-elif [[ ETCD_NAME == "master03" ]]; then 
+elif [[ $ETCD_NAME == "master03" ]]; then 
   INTERNAL_IP="172.16.0.13"
 fi
 
@@ -591,11 +591,11 @@ mv ca.pem ca-key.pem kubernetes-key.pem kubernetes.pem \
 # Setting TEMP_HOSTNAME
 echo -----\> Setting TEMP_HOSTNAME \<------
 TEMP_HOSTNAME=$(hostname -s)
-if [[ TEMP_HOSTNAME == "master01" ]]; then 
+if [[ $TEMP_HOSTNAME == "master01" ]]; then 
   INTERNAL_IP="172.16.0.11"
-elif [[ TEMP_HOSTNAME == "master02" ]]; then 
+elif [[ $TEMP_HOSTNAME == "master02" ]]; then 
   INTERNAL_IP="172.16.0.12"
-elif [[ TEMP_HOSTNAME == "master03" ]]; then 
+elif [[ $TEMP_HOSTNAME == "master03" ]]; then 
   INTERNAL_IP="172.16.0.13"
 fi
 
