@@ -514,7 +514,7 @@ for instance in master02 master03; do
     if [[ $instance == 'master02' ]]; then
       INTERNAL_IP=172.16.0.12
       ETCD_NAME=$instance
-    elif [[ $instance == 'master02' ]]; then
+    elif [[ $instance == 'master03' ]]; then
       INTERNAL_IP=172.16.0.13
       ETCD_NAME=$instance
 fi
@@ -522,7 +522,7 @@ fi
 sshpass -f "/root/password" ssh root@$instance 'systemctl stop firewalld'
 sshpass -f "/root/password" ssh root@$instance 'systemctl disable firewalld'
 sshpass -f "/root/password" ssh root@$instance 'swapoff -a'
-sshpass -f "/root/password" ssh root@$instance "sed -i  '/swap/d' /etc/fstab"
+sshpass -f "/root/password" ssh root@$instance "sed -i '/swap/d' /etc/fstab"
 sshpass -f "/root/password" ssh root@$instance 'hostnamectl set-hostname $instance'
 
 sshpass -f "/root/password" scp -r etcd-v3.4.0-linux-amd64.tar.gz root@$instance:~/
