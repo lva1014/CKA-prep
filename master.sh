@@ -778,3 +778,7 @@ systemctl enable kube-apiserver kube-controller-manager kube-scheduler
 systemctl start kube-apiserver kube-controller-manager kube-scheduler
 
 echo Installation Completed..
+
+yum install -y epel-release nginx
+
+
