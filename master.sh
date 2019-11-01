@@ -531,6 +531,13 @@ sshpass -f "/root/password" ssh root@$instance 'mv /root/etcd-v3.4.0-linux-amd64
 sshpass -f "/root/password" ssh root@$instance 'mkdir -p /etc/etcd /var/lib/etcd'
 sshpass -f "/root/password" ssh root@$instance 'cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/'
 
+sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.11  master01 >> /etc/hosts'
+sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.12  master02 >> /etc/hosts'
+sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.13  master03 >> /etc/hosts'
+sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.21  worker01 >> /etc/hosts'
+sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.22  worker02 >> /etc/hosts'
+sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.23  worker03 >> /etc/hosts'
+
 cat <<EOF | sudo tee /root/$instance.temp.etcd
 [Unit]
 Description=etcd
