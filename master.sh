@@ -511,32 +511,32 @@ sshpass -f "/root/password" scp -r ca.pem kubernetes-key.pem kubernetes.pem root
 
 # setup etcd on master02 and master03
 for instance in master02 master03; do
-    if [[ $instance == 'master02' ]]; then
-      INTERNAL_IP=172.16.0.12
-      ETCD_NAME=$instance
-    elif [[ $instance == 'master03' ]]; then
-      INTERNAL_IP=172.16.0.13
-      ETCD_NAME=$instance
-fi
+  if [[ $instance == 'master02' ]]; then
+    INTERNAL_IP=172.16.0.12
+    ETCD_NAME=$instance
+  elif [[ $instance == 'master03' ]]; then
+    INTERNAL_IP=172.16.0.13
+    ETCD_NAME=$instance
+  fi
+  
+  sshpass -f "/root/password" ssh root@$instance 'systemctl stop firewalld'
+  sshpass -f "/root/password" ssh root@$instance 'systemctl disable firewalld'
+  sshpass -f "/root/password" ssh root@$instance 'swapoff -a'
+  sshpass -f "/root/password" ssh root@$instance "sed -i '/swap/d' /etc/fstab"
+  sshpass -f "/root/password" ssh root@$instance 'hostnamectl set-hostname $instance'
 
-sshpass -f "/root/password" ssh root@$instance 'systemctl stop firewalld'
-sshpass -f "/root/password" ssh root@$instance 'systemctl disable firewalld'
-sshpass -f "/root/password" ssh root@$instance 'swapoff -a'
-sshpass -f "/root/password" ssh root@$instance "sed -i '/swap/d' /etc/fstab"
-sshpass -f "/root/password" ssh root@$instance 'hostnamectl set-hostname $instance'
+  sshpass -f "/root/password" scp -r etcd-v3.4.0-linux-amd64.tar.gz root@$instance:~/
+  sshpass -f "/root/password" ssh root@$instance 'tar -xvf /root/etcd-v3.4.0-linux-amd64.tar.gz'
+  sshpass -f "/root/password" ssh root@$instance 'mv /root/etcd-v3.4.0-linux-amd64/etcd* /usr/local/bin/'
+  sshpass -f "/root/password" ssh root@$instance 'mkdir -p /etc/etcd /var/lib/etcd'
+  sshpass -f "/root/password" ssh root@$instance 'cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/'
 
-sshpass -f "/root/password" scp -r etcd-v3.4.0-linux-amd64.tar.gz root@$instance:~/
-sshpass -f "/root/password" ssh root@$instance 'tar -xvf /root/etcd-v3.4.0-linux-amd64.tar.gz'
-sshpass -f "/root/password" ssh root@$instance 'mv /root/etcd-v3.4.0-linux-amd64/etcd* /usr/local/bin/'
-sshpass -f "/root/password" ssh root@$instance 'mkdir -p /etc/etcd /var/lib/etcd'
-sshpass -f "/root/password" ssh root@$instance 'cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/'
-
-sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.11  master01 >> /etc/hosts'
-sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.12  master02 >> /etc/hosts'
-sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.13  master03 >> /etc/hosts'
-sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.21  worker01 >> /etc/hosts'
-sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.22  worker02 >> /etc/hosts'
-sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.23  worker03 >> /etc/hosts'
+  sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.11  master01 >> /etc/hosts'
+  sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.12  master02 >> /etc/hosts'
+  sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.13  master03 >> /etc/hosts'
+  sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.21  worker01 >> /etc/hosts'
+  sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.22  worker02 >> /etc/hosts'
+  sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.23  worker03 >> /etc/hosts'
 
 cat <<EOF | sudo tee /root/$instance.temp.etcd
 [Unit]
@@ -570,10 +570,10 @@ RestartSec=5
 WantedBy=multi-user.target
 EOF
 
-sshpass -f "/root/password" scp -r /root/$instance.temp.etcd root@$instance:/etc/systemd/system/etcd.service
-sshpass -f "/root/password" ssh root@$instance 'systemctl daemon-reload'
-sshpass -f "/root/password" ssh root@$instance 'systemctl enable etcd'
-rm -f $instance.temp.etcd
+  sshpass -f "/root/password" scp -r /root/$instance.temp.etcd root@$instance:/etc/systemd/system/etcd.service
+  sshpass -f "/root/password" ssh root@$instance 'systemctl daemon-reload'
+  sshpass -f "/root/password" ssh root@$instance 'systemctl enable etcd'
+  rm -f $instance.temp.etcd
 
 done
 
