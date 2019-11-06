@@ -52,7 +52,7 @@ echo "  StrictHostKeyChecking no" >> /root/.ssh/config
 # update packages
 echo -----\> Updating Packages \<------
 yum update -y
-yum install -y wget net-tools tcpdump git sshpass
+#yum install -y wget net-tools tcpdump git sshpass
 
 # disable FW
 echo -----\> Disabling FW \<------
