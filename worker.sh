@@ -30,7 +30,7 @@ for instance in worker01 worker02 worker03; do
   sshpass -f "/root/password" ssh root@$instance "sed -i '/swap/d' /etc/fstab"
   sshpass -f "/root/password" ssh root@$instance 'hostnamectl set-hostname $instance'
   sshpass -f "/root/password" ssh root@$instance 'yum install -y socat conntrack ipset'
-fi
+done
 
 # downloading binaries
 wget \
@@ -63,7 +63,7 @@ for instance in worker02 worker03; do
   sshpass -f "/root/password" ssh root@$instance 'mkdir -p /var/lib/kube-proxy'
   sshpass -f "/root/password" ssh root@$instance 'mkdir -p /var/lib/kubernetes'
   sshpass -f "/root/password" ssh root@$instance 'mkdir -p /var/run/kubernetes'   
-fi
+done
 
 # install the binaries on worker01
 mkdir containerd
@@ -85,7 +85,7 @@ for instance in worker02 worker03; do
   sshpass -f "/root/password" ssh root@$instance 'chmod +x crictl kubectl kube-proxy kubelet runc'
   sshpass -f "/root/password" ssh root@$instance 'mv crictl kubectl kube-proxy kubelet runc /usr/local/bin/'
   sshpass -f "/root/password" ssh root@$instance 'mv containerd/bin/* /bin/'
-fi
+done
 
 # Create the bridge network configuration file
 cat <<EOF | sudo tee /etc/cni/net.d/10-bridge.conf
@@ -108,7 +108,7 @@ EOF
 
 for instance in worker02 worker03; do
   sshpass -f "/root/password" scp -r /etc/cni/net.d/10-bridge.conf root@$instance:/etc/cni/net.d/10-bridge.conf
-fi
+done
 
 # Create the loopback network configuration file
 cat <<EOF | sudo tee /etc/cni/net.d/99-loopback.conf
@@ -120,7 +120,7 @@ cat <<EOF | sudo tee /etc/cni/net.d/99-loopback.conf
 EOF
 for instance in worker02 worker03; do
   sshpass -f "/root/password" scp -r /etc/cni/net.d/99-loopback.conf root@$instance:/etc/cni/net.d/99-loopback.conf
-fi
+done
 
 # Create the containerd configuration file
 mkdir -p /etc/containerd/
@@ -138,7 +138,7 @@ EOF
 for instance in worker02 worker03; do
   sshpass -f "/root/password" ssh root@$instance 'mkdir -p /etc/containerd/'
   sshpass -f "/root/password" scp -r /etc/containerd/config.toml root@$instance:/etc/containerd/config.toml
-fi
+done
 
 # Create the containerd.service systemd unit file
 cat <<EOF | sudo tee /etc/systemd/system/containerd.service
@@ -165,7 +165,7 @@ EOF
 
 for instance in worker02 worker03; do
   sshpass -f "/root/password" scp -r /etc/systemd/system/containerd.service root@$instance:/etc/systemd/system/containerd.service
-fi
+done
 
 mv $HOSTNAME-key.pem $HOSTNAME.pem /var/lib/kubelet/
 mv $HOSTNAME.kubeconfig /var/lib/kubelet/kubeconfig
@@ -176,7 +176,7 @@ for instance in worker02 worker03; do
   sshpass -f "/root/password" ssh root@$instance 'mv $HOSTNAME-key.pem $HOSTNAME.pem /var/lib/kubelet/' 
   sshpass -f "/root/password" ssh root@$instance 'mv $HOSTNAME.kubeconfig /var/lib/kubelet/kubeconfig' 
   sshpass -f "/root/password" ssh root@$instance 'mv ca.pem /var/lib/kubernetes/'
-fi
+done
 
 # Create the kubelet-config.yaml configuration file
 for instance in worker01 worker02 worker03; do
@@ -202,14 +202,14 @@ runtimeRequestTimeout: "15m"
 tlsCertFile: "/var/lib/kubelet/$HOSTNAME.pem"
 tlsPrivateKeyFile: "/var/lib/kubelet/$HOSTNAME-key.pem"
 EOF
-fi
+done
 
 mv /var/lib/kubelet/kubelet-config-$instance.yaml /var/lib/kubelet/kubelet-config-.yaml
 
 for instance in worker02 worker03; do
   sshpass -f "/root/password" scp -r /var/lib/kubelet/kubelet-config-$instance.yaml root@$instance:/var/lib/kubelet/kubelet-config.yaml
   rm -f /var/lib/kubelet/kubelet-config-$instance.yaml
-fi
+done
 
 # Create the kubelet.service systemd unit file
 cat <<EOF | sudo tee /etc/systemd/system/kubelet.service
@@ -238,14 +238,14 @@ EOF
 
 for instance in worker02 worker03; do
   sshpass -f "/root/password" scp -r /etc/systemd/system/kubelet.service root@$instance:/etc/systemd/system/kubelet.service
-fi
+done
 
 # Configure the Kubernetes Proxy
 mv kube-proxy.kubeconfig /var/lib/kube-proxy/kubeconfig
 
 for instance in worker02 worker03; do
   sshpass -f "/root/password" scp -r /var/lib/kube-proxy/kubeconfig root@$instance:/var/lib/kube-proxy/kubeconfig
-fi
+done
 
 # Create the kube-proxy-config.yaml configuration file
 cat <<EOF | sudo tee /var/lib/kube-proxy/kube-proxy-config.yaml
@@ -259,7 +259,7 @@ EOF
 
 for instance in worker02 worker03; do
   sshpass -f "/root/password" scp -r /var/lib/kube-proxy/kube-proxy-config.yaml root@$instance:/var/lib/kube-proxy/kube-proxy-config.yaml
-fi
+done
 
 # Create the kube-proxy.service systemd unit file
 cat <<EOF | sudo tee /etc/systemd/system/kube-proxy.service
@@ -279,7 +279,7 @@ EOF
 
 for instance in worker02 worker03; do
   sshpass -f "/root/password" scp -r /etc/systemd/system/kube-proxy.service root@$instance:/etc/systemd/system/kube-proxy.service
-fi
+done
 
 # Start the Worker Services
 systemctl daemon-reload
@@ -290,7 +290,7 @@ for instance in worker02 worker03; do
   sshpass -f "/root/password" ssh root@$instance 'systemctl daemon-reload' 
   sshpass -f "/root/password" ssh root@$instance 'systemctl enable containerd kubelet kube-proxy' 
   sshpass -f "/root/password" ssh root@$instance 'systemctl start containerd kubelet kube-proxy'
-fi
+done
 
 
 
