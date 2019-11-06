@@ -1,5 +1,8 @@
 #!/bin/bash
 
+HOSTNAME=$(hostnamectl -s)
+POD_CIDR="172.16.0.0/24"
+
 # Add DNS records
 echo -----\> Modifying localhost entries \<------
 echo 172.16.0.11  master01 >> /etc/hosts
@@ -85,7 +88,6 @@ for instance in worker02 worker03; do
 fi
 
 # Create the bridge network configuration file
-$POD_CIDR="172.16.0.0/24"
 cat <<EOF | sudo tee /etc/cni/net.d/10-bridge.conf
 {
     "cniVersion": "0.3.1",
@@ -105,7 +107,6 @@ cat <<EOF | sudo tee /etc/cni/net.d/10-bridge.conf
 EOF
 
 for instance in worker02 worker03; do
-  sshpass -f "/root/password" ssh root@$instance 'touch /etc/cni/net.d/10-bridge.conf'
   sshpass -f "/root/password" scp -r /etc/cni/net.d/10-bridge.conf root@$instance:/etc/cni/net.d/10-bridge.conf
 fi
 
@@ -117,7 +118,179 @@ cat <<EOF | sudo tee /etc/cni/net.d/99-loopback.conf
     "type": "loopback"
 }
 EOF
+for instance in worker02 worker03; do
+  sshpass -f "/root/password" scp -r /etc/cni/net.d/99-loopback.conf root@$instance:/etc/cni/net.d/99-loopback.conf
+fi
 
+# Create the containerd configuration file
+mkdir -p /etc/containerd/
+
+cat << EOF | sudo tee /etc/containerd/config.toml
+[plugins]
+  [plugins.cri.containerd]
+    snapshotter = "overlayfs"
+    [plugins.cri.containerd.default_runtime]
+      runtime_type = "io.containerd.runtime.v1.linux"
+      runtime_engine = "/usr/local/bin/runc"
+      runtime_root = ""
+EOF
+
+for instance in worker02 worker03; do
+  sshpass -f "/root/password" ssh root@$instance 'mkdir -p /etc/containerd/'
+  sshpass -f "/root/password" scp -r /etc/containerd/config.toml root@$instance:/etc/containerd/config.toml
+fi
+
+# Create the containerd.service systemd unit file
+cat <<EOF | sudo tee /etc/systemd/system/containerd.service
+[Unit]
+Description=containerd container runtime
+Documentation=https://containerd.io
+After=network.target
+
+[Service]
+ExecStartPre=/sbin/modprobe overlay
+ExecStart=/bin/containerd
+Restart=always
+RestartSec=5
+Delegate=yes
+KillMode=process
+OOMScoreAdjust=-999
+LimitNOFILE=1048576
+LimitNPROC=infinity
+LimitCORE=infinity
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+for instance in worker02 worker03; do
+  sshpass -f "/root/password" scp -r /etc/systemd/system/containerd.service root@$instance:/etc/systemd/system/containerd.service
+fi
+
+mv $HOSTNAME-key.pem $HOSTNAME.pem /var/lib/kubelet/
+mv $HOSTNAME.kubeconfig /var/lib/kubelet/kubeconfig
+mv ca.pem /var/lib/kubernetes/
+
+for instance in worker02 worker03; do
+  HOSTNAME=$instance
+  sshpass -f "/root/password" ssh root@$instance 'mv $HOSTNAME-key.pem $HOSTNAME.pem /var/lib/kubelet/' 
+  sshpass -f "/root/password" ssh root@$instance 'mv $HOSTNAME.kubeconfig /var/lib/kubelet/kubeconfig' 
+  sshpass -f "/root/password" ssh root@$instance 'mv ca.pem /var/lib/kubernetes/'
+fi
+
+# Create the kubelet-config.yaml configuration file
+for instance in worker01 worker02 worker03; do
+  HOSTNAME=$instance
+cat <<EOF | sudo tee /var/lib/kubelet/kubelet-config-$instance.yaml
+kind: KubeletConfiguration
+apiVersion: kubelet.config.k8s.io/v1beta1
+authentication:
+  anonymous:
+    enabled: false
+  webhook:
+    enabled: true
+  x509:
+    clientCAFile: "/var/lib/kubernetes/ca.pem"
+authorization:
+  mode: Webhook
+clusterDomain: "cluster.local"
+clusterDNS:
+  - "10.32.0.10"
+podCIDR: "$POD_CIDR"
+resolvConf: "/run/systemd/resolve/resolv.conf"
+runtimeRequestTimeout: "15m"
+tlsCertFile: "/var/lib/kubelet/$HOSTNAME.pem"
+tlsPrivateKeyFile: "/var/lib/kubelet/$HOSTNAME-key.pem"
+EOF
+fi
+
+mv /var/lib/kubelet/kubelet-config-$instance.yaml /var/lib/kubelet/kubelet-config-.yaml
+
+for instance in worker02 worker03; do
+  sshpass -f "/root/password" scp -r /var/lib/kubelet/kubelet-config-$instance.yaml root@$instance:/var/lib/kubelet/kubelet-config.yaml
+  rm -f /var/lib/kubelet/kubelet-config-$instance.yaml
+fi
+
+# Create the kubelet.service systemd unit file
+cat <<EOF | sudo tee /etc/systemd/system/kubelet.service
+[Unit]
+Description=Kubernetes Kubelet
+Documentation=https://github.com/kubernetes/kubernetes
+After=containerd.service
+Requires=containerd.service
+
+[Service]
+ExecStart=/usr/local/bin/kubelet \\
+  --config=/var/lib/kubelet/kubelet-config.yaml \\
+  --container-runtime=remote \\
+  --container-runtime-endpoint=unix:///var/run/containerd/containerd.sock \\
+  --image-pull-progress-deadline=2m \\
+  --kubeconfig=/var/lib/kubelet/kubeconfig \\
+  --network-plugin=cni \\
+  --register-node=true \\
+  --v=2
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+for instance in worker02 worker03; do
+  sshpass -f "/root/password" scp -r /etc/systemd/system/kubelet.service root@$instance:/etc/systemd/system/kubelet.service
+fi
+
+# Configure the Kubernetes Proxy
+mv kube-proxy.kubeconfig /var/lib/kube-proxy/kubeconfig
+
+for instance in worker02 worker03; do
+  sshpass -f "/root/password" scp -r /var/lib/kube-proxy/kubeconfig root@$instance:/var/lib/kube-proxy/kubeconfig
+fi
+
+# Create the kube-proxy-config.yaml configuration file
+cat <<EOF | sudo tee /var/lib/kube-proxy/kube-proxy-config.yaml
+kind: KubeProxyConfiguration
+apiVersion: kubeproxy.config.k8s.io/v1alpha1
+clientConnection:
+  kubeconfig: "/var/lib/kube-proxy/kubeconfig"
+mode: "iptables"
+clusterCIDR: "10.200.0.0/16"
+EOF
+
+for instance in worker02 worker03; do
+  sshpass -f "/root/password" scp -r /var/lib/kube-proxy/kube-proxy-config.yaml root@$instance:/var/lib/kube-proxy/kube-proxy-config.yaml
+fi
+
+# Create the kube-proxy.service systemd unit file
+cat <<EOF | sudo tee /etc/systemd/system/kube-proxy.service
+[Unit]
+Description=Kubernetes Kube Proxy
+Documentation=https://github.com/kubernetes/kubernetes
+
+[Service]
+ExecStart=/usr/local/bin/kube-proxy \\
+  --config=/var/lib/kube-proxy/kube-proxy-config.yaml
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+for instance in worker02 worker03; do
+  sshpass -f "/root/password" scp -r /etc/systemd/system/kube-proxy.service root@$instance:/etc/systemd/system/kube-proxy.service
+fi
+
+# Start the Worker Services
+systemctl daemon-reload
+systemctl enable containerd kubelet kube-proxy
+systemctl start containerd kubelet kube-proxy
+
+for instance in worker02 worker03; do
+  sshpass -f "/root/password" ssh root@$instance 'systemctl daemon-reload' 
+  sshpass -f "/root/password" ssh root@$instance 'systemctl enable containerd kubelet kube-proxy' 
+  sshpass -f "/root/password" ssh root@$instance 'systemctl start containerd kubelet kube-proxy'
+fi
 
 
 
