@@ -27,10 +27,10 @@ echo "  StrictHostKeyChecking no" >> /root/.ssh/config
 
 # settin up workers:
 for instance in worker01 worker02 worker03; do
-  sshpass -f "/root/password" ssh root@$instance 'swapoff -a'
-  sshpass -f "/root/password" ssh root@$instance "sed -i '/swap/d' /etc/fstab"
-  sshpass -f "/root/password" ssh root@$instance 'hostnamectl set-hostname $instance'
-  sshpass -f "/root/password" ssh root@$instance 'yum install -y socat conntrack ipset'
+  sshpass -f "/root/password" ssh root@$instance swapoff -a
+  sshpass -f "/root/password" ssh root@$instance sed -i '/swap/d' /etc/fstab
+  sshpass -f "/root/password" ssh root@$instance hostnamectl set-hostname $instance
+  sshpass -f "/root/password" ssh root@$instance yum install -y socat conntrack ipset
 done
 
 # downloading binaries
@@ -59,11 +59,11 @@ for instance in worker02 worker03; do
   sshpass -f "/root/password" scp -r kube-proxy root@$instance:~/
   sshpass -f "/root/password" scp -r kubelet root@$instance:~/
   
-  sshpass -f "/root/password" ssh root@$instance 'mkdir -p /opt/cni/bin'
-  sshpass -f "/root/password" ssh root@$instance 'mkdir -p /var/lib/kubelet'
-  sshpass -f "/root/password" ssh root@$instance 'mkdir -p /var/lib/kube-proxy'
-  sshpass -f "/root/password" ssh root@$instance 'mkdir -p /var/lib/kubernetes'
-  sshpass -f "/root/password" ssh root@$instance 'mkdir -p /var/run/kubernetes'   
+  sshpass -f "/root/password" ssh root@$instance mkdir -p /opt/cni/bin
+  sshpass -f "/root/password" ssh root@$instance mkdir -p /var/lib/kubelet
+  sshpass -f "/root/password" ssh root@$instance mkdir -p /var/lib/kube-proxy
+  sshpass -f "/root/password" ssh root@$instance mkdir -p /var/lib/kubernetes
+  sshpass -f "/root/password" ssh root@$instance mkdir -p /var/run/kubernetes   
 done
 
 # install the binaries on worker01
@@ -78,14 +78,14 @@ mv containerd/bin/* /bin/
 
 # install the binaries on worker02, worker03
 for instance in worker02 worker03; do
-  sshpass -f "/root/password" ssh root@$instance 'mkdir containerd'
-  sshpass -f "/root/password" ssh root@$instance 'tar -xvf crictl-v1.15.0-linux-amd64.tar.gz'
-  sshpass -f "/root/password" ssh root@$instance 'tar -xvf containerd-1.2.9.linux-amd64.tar.gz -C containerd'
-  sshpass -f "/root/password" ssh root@$instance 'tar -xvf cni-plugins-linux-amd64-v0.8.2.tgz -C /opt/cni/bin/'
-  sshpass -f "/root/password" ssh root@$instance 'mv runc.amd64 runc'
-  sshpass -f "/root/password" ssh root@$instance 'chmod +x crictl kubectl kube-proxy kubelet runc'
-  sshpass -f "/root/password" ssh root@$instance 'mv crictl kubectl kube-proxy kubelet runc /usr/local/bin/'
-  sshpass -f "/root/password" ssh root@$instance 'mv containerd/bin/* /bin/'
+  sshpass -f "/root/password" ssh root@$instance mkdir containerd
+  sshpass -f "/root/password" ssh root@$instance tar -xvf crictl-v1.15.0-linux-amd64.tar.gz
+  sshpass -f "/root/password" ssh root@$instance tar -xvf containerd-1.2.9.linux-amd64.tar.gz -C containerd
+  sshpass -f "/root/password" ssh root@$instance tar -xvf cni-plugins-linux-amd64-v0.8.2.tgz -C /opt/cni/bin/
+  sshpass -f "/root/password" ssh root@$instance mv runc.amd64 runc
+  sshpass -f "/root/password" ssh root@$instance chmod +x crictl kubectl kube-proxy kubelet runc
+  sshpass -f "/root/password" ssh root@$instance mv crictl kubectl kube-proxy kubelet runc /usr/local/bin/
+  sshpass -f "/root/password" ssh root@$instance mv containerd/bin/* /bin/
 done
 
 # Create the bridge network configuration file
@@ -108,6 +108,7 @@ cat <<EOF | sudo tee /etc/cni/net.d/10-bridge.conf
 EOF
 
 for instance in worker02 worker03; do
+  sshpass -f "/root/password" ssh root@$instance mkdir /etc/cni/net.d/
   sshpass -f "/root/password" scp -r /etc/cni/net.d/10-bridge.conf root@$instance:/etc/cni/net.d/10-bridge.conf
 done
 
@@ -120,6 +121,7 @@ cat <<EOF | sudo tee /etc/cni/net.d/99-loopback.conf
 }
 EOF
 for instance in worker02 worker03; do
+  sshpass -f "/root/password" ssh root@$instance mkdir /etc/cni/net.d/
   sshpass -f "/root/password" scp -r /etc/cni/net.d/99-loopback.conf root@$instance:/etc/cni/net.d/99-loopback.conf
 done
 
@@ -137,7 +139,7 @@ cat << EOF | sudo tee /etc/containerd/config.toml
 EOF
 
 for instance in worker02 worker03; do
-  sshpass -f "/root/password" ssh root@$instance 'mkdir -p /etc/containerd/'
+  sshpass -f "/root/password" ssh root@$instance mkdir -p /etc/containerd/
   sshpass -f "/root/password" scp -r /etc/containerd/config.toml root@$instance:/etc/containerd/config.toml
 done
 
@@ -165,6 +167,7 @@ WantedBy=multi-user.target
 EOF
 
 for instance in worker02 worker03; do
+  sshpass -f "/root/password" ssh root@$instance mkdir -p /etc/systemd/system/
   sshpass -f "/root/password" scp -r /etc/systemd/system/containerd.service root@$instance:/etc/systemd/system/containerd.service
 done
 
@@ -174,9 +177,9 @@ mv ca.pem /var/lib/kubernetes/
 
 for instance in worker02 worker03; do
   HOSTNAME=$instance
-  sshpass -f "/root/password" ssh root@$instance 'mv $HOSTNAME-key.pem $HOSTNAME.pem /var/lib/kubelet/' 
-  sshpass -f "/root/password" ssh root@$instance 'mv $HOSTNAME.kubeconfig /var/lib/kubelet/kubeconfig' 
-  sshpass -f "/root/password" ssh root@$instance 'mv ca.pem /var/lib/kubernetes/'
+  sshpass -f "/root/password" ssh root@$instance mv $HOSTNAME-key.pem $HOSTNAME.pem /var/lib/kubelet/ 
+  sshpass -f "/root/password" ssh root@$instance mv $HOSTNAME.kubeconfig /var/lib/kubelet/kubeconfig/
+  sshpass -f "/root/password" ssh root@$instance mv ca.pem /var/lib/kubernetes/
 done
 
 # Create the kubelet-config.yaml configuration file
@@ -288,9 +291,9 @@ systemctl enable containerd kubelet kube-proxy
 systemctl start containerd kubelet kube-proxy
 
 for instance in worker02 worker03; do
-  sshpass -f "/root/password" ssh root@$instance 'systemctl daemon-reload' 
-  sshpass -f "/root/password" ssh root@$instance 'systemctl enable containerd kubelet kube-proxy' 
-  sshpass -f "/root/password" ssh root@$instance 'systemctl start containerd kubelet kube-proxy'
+  sshpass -f "/root/password" ssh root@$instance systemctl daemon-reload
+  sshpass -f "/root/password" ssh root@$instance systemctl enable containerd kubelet kube-proxy 
+  sshpass -f "/root/password" ssh root@$instance systemctl start containerd kubelet kube-proxy
 done
 
 
