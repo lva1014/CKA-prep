@@ -2,6 +2,7 @@
 
 HOSTNAME=$(hostnamectl -s)
 POD_CIDR="172.16.0.0/24"
+yum install -y wget
 
 # Add DNS records
 echo -----\> Modifying localhost entries \<------
