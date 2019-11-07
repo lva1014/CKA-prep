@@ -513,32 +513,32 @@ sshpass -f "/root/password" scp -r ca.pem kubernetes-key.pem kubernetes.pem root
 
 # setup etcd on master02 and master03
 for instance in master02 master03; do
-  if [[ $instance == 'master02' ]]; then
+  if [[ $instance == master02 ]]; then
     INTERNAL_IP=172.16.0.12
     ETCD_NAME=$instance
-  elif [[ $instance == 'master03' ]]; then
+  elif [[ $instance == master03 ]]; then
     INTERNAL_IP=172.16.0.13
     ETCD_NAME=$instance
   fi
   
-  sshpass -f "/root/password" ssh root@$instance 'systemctl stop firewalld'
-  sshpass -f "/root/password" ssh root@$instance 'systemctl disable firewalld'
-  sshpass -f "/root/password" ssh root@$instance 'swapoff -a'
-  sshpass -f "/root/password" ssh root@$instance "sed -i '/swap/d' /etc/fstab"
-  sshpass -f "/root/password" ssh root@$instance 'hostnamectl set-hostname $instance'
+  sshpass -f "/root/password" ssh root@$instance systemctl stop firewalld
+  sshpass -f "/root/password" ssh root@$instance systemctl disable firewalld
+  sshpass -f "/root/password" ssh root@$instance swapoff -a
+  sshpass -f "/root/password" ssh root@$instance sed -i \'/swap/d\' /etc/fstab
+  sshpass -f "/root/password" ssh root@$instance hostnamectl set-hostname $instance
 
   sshpass -f "/root/password" scp -r etcd-v3.4.0-linux-amd64.tar.gz root@$instance:~/
-  sshpass -f "/root/password" ssh root@$instance 'tar -xvf /root/etcd-v3.4.0-linux-amd64.tar.gz'
-  sshpass -f "/root/password" ssh root@$instance 'mv /root/etcd-v3.4.0-linux-amd64/etcd* /usr/local/bin/'
-  sshpass -f "/root/password" ssh root@$instance 'mkdir -p /etc/etcd /var/lib/etcd'
-  sshpass -f "/root/password" ssh root@$instance 'cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/'
+  sshpass -f "/root/password" ssh root@$instance tar -xvf /root/etcd-v3.4.0-linux-amd64.tar.gz
+  sshpass -f "/root/password" ssh root@$instance mv /root/etcd-v3.4.0-linux-amd64/etcd* /usr/local/bin/
+  sshpass -f "/root/password" ssh root@$instance mkdir -p /etc/etcd /var/lib/etcd
+  sshpass -f "/root/password" ssh root@$instance cp ca.pem kubernetes-key.pem kubernetes.pem /etc/etcd/
 
-  sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.11  master01 >> /etc/hosts'
-  sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.12  master02 >> /etc/hosts'
-  sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.13  master03 >> /etc/hosts'
-  sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.21  worker01 >> /etc/hosts'
-  sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.22  worker02 >> /etc/hosts'
-  sshpass -f "/root/password" ssh root@$instance 'echo 172.16.0.23  worker03 >> /etc/hosts'
+  sshpass -f "/root/password" ssh root@$instance echo 172.16.0.11  master01 >> /etc/hosts
+  sshpass -f "/root/password" ssh root@$instance echo 172.16.0.12  master02 >> /etc/hosts
+  sshpass -f "/root/password" ssh root@$instance echo 172.16.0.13  master03 >> /etc/hosts
+  sshpass -f "/root/password" ssh root@$instance echo 172.16.0.21  worker01 >> /etc/hosts
+  sshpass -f "/root/password" ssh root@$instance echo 172.16.0.22  worker02 >> /etc/hosts
+  sshpass -f "/root/password" ssh root@$instance echo 172.16.0.23  worker03 >> /etc/hosts
 
 cat <<EOF | sudo tee /root/$instance.temp.etcd
 [Unit]
@@ -573,8 +573,8 @@ WantedBy=multi-user.target
 EOF
 
   sshpass -f "/root/password" scp -r /root/$instance.temp.etcd root@$instance:/etc/systemd/system/etcd.service
-  sshpass -f "/root/password" ssh root@$instance 'systemctl daemon-reload'
-  sshpass -f "/root/password" ssh root@$instance 'systemctl enable etcd'
+  sshpass -f "/root/password" ssh root@$instance systemctl daemon-reload
+  sshpass -f "/root/password" ssh root@$instance systemctl enable etcd
   rm -f $instance.temp.etcd
 
 done
@@ -620,8 +620,8 @@ echo -----\> Starting ETCD server \<------
 systemctl daemon-reload
 systemctl enable etcd
 systemctl start etcd &
-sshpass -f "/root/password" ssh root@master02 'systemctl start etcd &'
-sshpass -f "/root/password" ssh root@master03 'systemctl start etcd &'
+sshpass -f "/root/password" ssh root@master02 systemctl start etcd &
+sshpass -f "/root/password" ssh root@master03 systemctl start etcd &
 
 # Verification
 #echo -----\> Verifying ETCD server \<------
@@ -781,7 +781,31 @@ systemctl start kube-apiserver kube-controller-manager kube-scheduler
 
 echo Installation Completed..
 
-yum install -y epel-release nginx
+yum install -y epel-release 
+yum install -y nginx
+
+cat > kubernetes.default.svc.cluster.local <<EOF
+server {
+  listen      80;
+  server_name kubernetes.default.svc.cluster.local;
+
+  location /healthz {
+     proxy_pass                    https://127.0.0.1:6443/healthz;
+     proxy_ssl_trusted_certificate /var/lib/kubernetes/ca.pem;
+  }
+}
+EOF
+
+mv kubernetes.default.svc.cluster.local \
+  /etc/nginx/sites-available/kubernetes.default.svc.cluster.local
+ln -s /etc/nginx/sites-available/kubernetes.default.svc.cluster.local /etc/nginx/sites-enabled/
+
+systemctl restart nginx
+systemctl enable nginx
+
+kubectl get componentstatuses --kubeconfig admin.kubeconfig
+
+curl -H "Host: kubernetes.default.svc.cluster.local" -i http://127.0.0.1/healthz
 
 
 
