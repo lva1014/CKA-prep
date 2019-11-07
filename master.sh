@@ -8,6 +8,8 @@
 
 TEMP_LOCAL_IP=$(ip add | grep 172.16 | awk '{print($2)}' | rev | cut -c4- | rev)
 KUBERNETES_PUBLIC_ADDRESS="10.0.0.230" 
+yum install -y wget
+
 
 # change hostname
 echo -----\> Chaning hostname \<------
