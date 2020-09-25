@@ -16,7 +16,7 @@ if [[ $TEMP_LOCAL_IP == '172.16.0.11' ]]; then
   hostnamectl set-hostname master01
   TEMP_LOCAL_HOSTNAME='master01'
 elif [[ $TEMP_LOCAL_IP == '172.16.0.12' ]]; then
-  hostnamectl set-hostname master03
+  hostnamectl set-hostname master02
   TEMP_LOCAL_HOSTNAME='master02'
 elif [[ $TEMP_LOCAL_IP == '172.16.0.13' ]]; then
   hostnamectl set-hostname master03
