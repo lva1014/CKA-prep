@@ -1,4 +1,11 @@
 # CentOS
+# disable FW
+systemctl stop firewalld
+systemctl disable firewalld
+
+# Turn off swap and update fstab
+swapoff -a
+sed -i  '/swap/d' /etc/fstab
 
 lsmod | grep br_netfilter
 
